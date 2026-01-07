@@ -37,12 +37,12 @@ void process_data([[maybe_unused]] const std::vector<Point3D>& a) {
 }
 
 int main() {
-    const int N = 10'000'000; // 10 million elements as per Phase 0 [cite: 102]
+    const int N = 10'000'000; // 10 million elements as per Phase 0
 
     std::cout << "--- Phase 0: Memory-Safe Vector Operations Benchmark ---\n";
     std::cout << "Generating 10M points for benchmark...\n\n";
 
-    // --- Part 1: Capacity Optimization (Reserve vs Push_back) [cite: 104] ---
+    // --- Part 1: Capacity Optimization (Reserve vs Push_back) ---
     
     // Benchmark A: With reserve()
     std::vector<Point3D> a;
@@ -74,7 +74,7 @@ int main() {
     std::cout << "   (Expect reserve() to be significantly faster)\n\n";
 
 
-    // --- Part 2: Move Semantics vs Copy [cite: 102] ---
+    // --- Part 2: Move Semantics vs Copy ---
     std::cout << "--- Testing Swap Performance ---\n";
     // Passing filled vectors 'a' and 'b' to your function
 
@@ -83,7 +83,7 @@ int main() {
     move_vector(d, b); 
 
 
-    // --- Part 3: Const-Correctness [cite: 103] ---
+    // --- Part 3: Const-Correctness ---
     std::cout << "\n--- Testing Const-Correctness ---\n";
     process_data(a);
     std::cout << "process_data executed successfully (Read-Only access).\n";
