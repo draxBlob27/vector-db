@@ -1,6 +1,6 @@
 #include <memory>
 #include <utility>
-#include <exception>
+#include <stdexcept>
 
 template <typename T>
 class SafeVector {
@@ -50,8 +50,8 @@ public:
         swap(a, *this);
         return *this;
     }
-    
-    void push_back(const T value) { //can use lvalue and rvalue overloading in nxt time
+
+    void push_back(T&& value) { //uses const rvalue ref
         if (m_size == m_capacity) {
             //alloate new memory
             //move data from current memeory to new memory
@@ -59,10 +59,31 @@ public:
         
             auto temp_data = std::make_unique<T[]>(m_capacity ? 2 * m_capacity : 1);
             std::move(m_data.get(), m_data.get() + m_size, temp_data.get());
+            temp_data[m_size] = std::move(value);
             m_data = std::move(temp_data);
             m_capacity = m_capacity ? 2 * m_capacity : 1;
+        } else {
+            m_data[m_size] = std::move(value);
         }
-        m_data[m_size] = value;
+        
+        m_size++;
+    }
+
+    void push_back(const T& value) { //uses pass by value
+        if (m_size == m_capacity) {
+            //alloate new memory
+            //move data from current memeory to new memory
+            //insert new value
+        
+            auto temp_data = std::make_unique<T[]>(m_capacity ? 2 * m_capacity : 1);
+            std::move(m_data.get(), m_data.get() + m_size, temp_data.get());
+            temp_data[m_size] = value;
+            m_data = std::move(temp_data);
+            m_capacity = m_capacity ? 2 * m_capacity : 1;
+        } else {
+            m_data[m_size] = value;
+        }
+        
         m_size++;
     }
     
@@ -72,15 +93,23 @@ public:
             return;
         }
         
-        throw("Vector empty");
+        throw std::out_of_range("Index out of range");
     }
 
-    T& operator[](const int idx) const {
+    T& operator[](const int idx) { //for accesing and modfying using lvalue
         if (idx < m_size && m_size >= 0) {
             return m_data[idx];
         }
 
-        throw("Index out of bound");
+        throw std::out_of_range("Index out of range");
+    }
+
+    const T& at(const int idx) const {
+        if (idx < m_size && m_size >= 0) {
+            return m_data[idx];
+        }
+
+        throw std::out_of_range("Index out of range");
     }
 
     std::size_t size() const {
