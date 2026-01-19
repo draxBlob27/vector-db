@@ -149,6 +149,7 @@ public:
     void clear() {
         m_size = 0;
         m_capacity = 0;
+        m_data.reset();
     }
 
     T* begin() {
