@@ -96,20 +96,36 @@ public:
         throw std::out_of_range("Index out of range");
     }
 
-    T& operator[](const int idx) { //for accesing and modfying using lvalue
-        if (idx < m_size && m_size >= 0) {
+    T& operator[](const std::size_t idx) { //for accesing and modfying using lvalue
+        if (idx < m_size) {
             return m_data[idx];
         }
 
         throw std::out_of_range("Index out of range");
     }
 
-    const T& at(const int idx) const {
-        if (idx < m_size && m_size >= 0) {
+    const T& at(const std::size_t idx) const {
+        if (idx < m_size) {
             return m_data[idx];
         }
 
         throw std::out_of_range("Index out of range");
+    }
+
+    const T& back() {
+        if (!empty()) {
+            return m_data[m_size - 1];
+        }
+
+        throw std::out_of_range("Vector is empty");
+    }
+
+    const T& front() {
+        if(m_size) {
+            return m_data[0];
+        }
+
+        throw std::out_of_range("Vector is empty");
     }
 
     std::size_t size() const {

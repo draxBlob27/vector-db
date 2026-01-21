@@ -17,4 +17,16 @@ TYPED_TEST_SUITE(SafeVector_test, MyTypes);
 TYPED_TEST(SafeVector_test, rValuePushBack) {
     this->arr.push_back(10);
     EXPECT_EQ(this->arr.size(), 11);
+    EXPECT_EQ(this->arr[10], 10);
+    EXPECT_EQ(this->arr.back(), 10);
+    EXPECT_EQ(this->arr.capacity(), 20);
+}
+
+TYPED_TEST(SafeVector_test, lValuePushBack) {
+    int val = 10;
+    this->arr.push_back(val);
+    EXPECT_EQ(this->arr.size(), 11);
+    EXPECT_EQ(this->arr[10], 10);
+    EXPECT_EQ(this->arr.back(), 10);
+    EXPECT_EQ(this->arr.capacity(), 20);
 }
