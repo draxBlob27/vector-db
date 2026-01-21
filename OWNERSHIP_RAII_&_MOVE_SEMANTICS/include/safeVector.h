@@ -30,8 +30,8 @@ public:
     }
 
     SafeVector(SafeVector&& a) noexcept
-        :m_capacity{a.m_capacity},
-        m_size{a.m_size},
+        :m_size{a.m_size},
+        m_capacity{a.m_capacity},
         m_data{std::move(a.m_data)}
     { //move contructor
         a.m_capacity = 0;
@@ -152,14 +152,14 @@ public:
         m_size = new_size;
     }
 
-    void reserve(const std::size_t new_size) {
-        if (new_size > m_capacity) {
-            auto temp_data = std::make_unique<T[]>(new_size);
+    void reserve(const std::size_t new_capacity) {
+        if (new_capacity > m_capacity) {
+            auto temp_data = std::make_unique<T[]>(new_capacity);
             
             std::move(m_data.get(), m_data.get() + m_size, temp_data.get());
             m_data = std::move(temp_data);
-            m_capacity = new_size;
-        }
+            m_capacity = new_capacity;
+        } 
     }
 
     void clear() {
