@@ -163,6 +163,7 @@ TYPED_TEST(SafeVector_test, usable_after_exception) {
 }
 
 TYPED_TEST(SafeVector_test, illegal) {
-    EXPECT_DEATH(this->arr.resize(-1), "");
-    EXPECT_DEATH(this->arr.reserve(-1), "");
+    EXPECT_THROW(this->arr.resize(-1), std::bad_alloc);
+    EXPECT_THROW(this->arr.reserve(-1), std::bad_alloc);
+    EXPECT_THROW(SafeVector<TypeParam> another_arr(-1), std::bad_alloc);
 }
