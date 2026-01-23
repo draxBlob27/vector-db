@@ -1,48 +1,40 @@
 f ?= main
-all: clean
+STD = -std=c++23
+W_FLAGS = -Wall -Werror -Wpedantic
+D_FLAGS = -g -O0
+SAN_FLAGS = -O1 -g -fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer
+
+all: run clean
 
 hello:
 	@echo "Hello Sanil Parmar"
 
-easy: run_easy
-	rm -f ${f}
-
-run_easy: compile_alter
+easy: 
+	clang++ ${STD} -o ${f} ${f}.cpp
 	./${f}
+	rm -rf ${f}
 
-compile_alter: 
-	clang++ -std=c++23 -o ${f} ${f}.cpp
-
-debug: clean_debug
-	rm -f ${f}
-	rm -r ${f}.dSYM
-
-clean_debug: compile_dbg
+debug: compile_dbg
 	lldb ./${f}
+	rm -r ${f}.dSYM
 
 compile_dbg:
 	clang++ -std=gnu++14 -g ${f}.cpp -o ${f}
-
-clean: run
-	rm -f ${f}
 
 run: compile
 	./${f}
 
 compile:
-	clang++ -std=c++23 -Wall -Werror -Wextra -Wpedantic -Wshadow -Wconversion -Wsign-conversion -o ${f} ${f}.cpp
+	clang++ ${STD} ${W_FLAGS} -o ${f} ${f}.cpp
 
-san: clean_san
+san: 
+	clang++ ${STD} ${SAN_FLAGS} -o ${f} ${f}.cpp
+	./${f}
+	rm -rf ${f}.dSYM
 
-clean_san: run_san
+clean:
 	rm -f ${f}
 	rm -r ${f}.dSYM
 
-run_san: compile_san
-	./${f}
-
-compile_san:
-	clang++ -O1 -g -std=c++23 -fsanitize=undefined,address -fno-omit-frame-pointer -o ${f} ${f}.cpp
-
 .PHONY:
-	all hello run compile
+	all hello run compile debug san easy clean
