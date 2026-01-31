@@ -90,13 +90,13 @@ public:
         inf.read(reinterpret_cast<char*>(&magic_bytes), sizeof(uint32_t));
 
         if (magic_bytes != s_magic_bytes)
-            return {{0.0}} //placeholder;
+            return {{0.0}}; //placeholder;
 
         uint32_t version;
         inf.read(reinterpret_cast<char*>(&version), sizeof(uint32_t));
 
         if (version != s_version)
-            return {{0.0}} //placeholder;
+            return {{0.0}}; //placeholder;
 
         uint32_t dimension;
         inf.read(reinterpret_cast<char*>(&dimension), sizeof(uint32_t));
@@ -124,7 +124,7 @@ public:
         }
 
         if (calc_crc_32 != crc_32)
-            return {{0.0}} //placeholder
+            return {{0.0}}; //placeholder
         
         return data;
     }
