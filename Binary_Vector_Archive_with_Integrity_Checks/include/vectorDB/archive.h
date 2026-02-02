@@ -1,3 +1,5 @@
+#ifndef ARCHIVE_H
+#define ARCHIVE_H
 #include <iostream>
 #include <vector>
 #include <fstream>
@@ -234,3 +236,4 @@ public:
         iof.write(reinterpret_cast<char*>(&crc_32), sizeof(uint32_t));
     }
 };
+#endif
