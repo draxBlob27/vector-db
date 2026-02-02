@@ -25,6 +25,13 @@ public:
     {}
 };
 
+class InvalidOperationError: public ArchiveError {
+public: 
+    InvalidOperationError(const std::string& error)
+        :ArchiveError(error)
+    {}
+};
+
 class InsufficientSpaceError : public ArchiveError {
 public:
     InsufficientSpaceError(const std::string& error)

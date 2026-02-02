@@ -3,6 +3,7 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
+#include "errors.h"
 
 class VectorArchive
 {
@@ -63,177 +64,11 @@ private:
     };
 
 public:
-    void save(const std::string& file_path, const std::vector<std::vector<double>>& data)
-    {
-        const uint64_t count{data.size()};
-        const uint32_t dimension{data[0].size()};
-        
-        uint32_t crc_32{0xFFFFFFFF};
+    void save(const std::string& file_path, const std::vector<std::vector<double>>& data);
+    std::vector<std::vector<double>> load(const std::string& file_path);
+    FileInfo info(const std::string& file_path);
+    bool verify(const std::string& file_path);
+    void append(const std::string& file_path, const std::vector<std::vector<double>>& data);
 
-
-        std::ofstream outf{file_path, std::ios::binary};
-
-        outf.write(reinterpret_cast<const char *>(&s_magic_bytes), sizeof(uint32_t));
-        outf.write(reinterpret_cast<const char *>(&s_version), sizeof(uint32_t));
-        outf.write(reinterpret_cast<const char *>(&dimension), sizeof(uint32_t));
-        outf.write(reinterpret_cast<const char *>(&count), sizeof(uint64_t));
-
-        for (uint64_t i{0}; i < count; i++)
-        {
-            const char* d_ptr = reinterpret_cast<const char *>(&data[i][0]);
-            outf.write(d_ptr, dimension * sizeof(double));
-            for (int j{0}; j < dimension * sizeof(double); j++) {//we need crc every byte(ie, dimension*sizeof(double))
-                int index{(crc_32 ^ d_ptr[j]) & 0xFF};
-                crc_32 = (crc_32 >> 8) ^ s_crc_32_tab[index];
-            }
-        }
-
-        crc_32 ^= 0xFFFFFFFF;
-        outf.write(reinterpret_cast<char *>(&crc_32), sizeof(uint32_t));
-    }
-
-    std::vector<std::vector<double>> load(const std::string& file_path) {
-        std::ifstream inf{file_path, std::ios::binary};
-
-        uint32_t magic_bytes;
-        inf.read(reinterpret_cast<char*>(&magic_bytes), sizeof(uint32_t));
-
-        if (magic_bytes != s_magic_bytes)
-            return {{0.0}}; //placeholder;
-
-        uint32_t version;
-        inf.read(reinterpret_cast<char*>(&version), sizeof(uint32_t));
-
-        if (version != s_version)
-            return {{0.0}}; //placeholder;
-
-        uint32_t dimension;
-        inf.read(reinterpret_cast<char*>(&dimension), sizeof(uint32_t));
-        
-        uint64_t count;
-        inf.read(reinterpret_cast<char*>(&count), sizeof(uint64_t));
-        
-        uint32_t calc_crc_32{0xFFFFFFFF};
-        std::vector<std::vector<double>> data(count, std::vector<double>(dimension));
-        for (uint64_t i = 0; i < count; i++) {
-            char* d_ptr = reinterpret_cast<char*>(&data[i][0]);
-            inf.read(d_ptr, dimension * sizeof(double));
-            for (int j{0}; j < dimension * sizeof(double); j++) {
-                int index{(calc_crc_32 ^ d_ptr[j]) & 0xFF};
-                calc_crc_32 = (calc_crc_32 >> 8) ^ s_crc_32_tab[index];
-            }
-        }
-
-        calc_crc_32 ^= 0xFFFFFFFF;
-
-        uint32_t crc_32;
-        inf.read(reinterpret_cast<char*>(&crc_32), sizeof(uint32_t));
-
-
-        if (calc_crc_32 != crc_32)
-            return {{0.0}}; //placeholder
-        
-        return data;
-    }
-
-    FileInfo info(const std::string& file_path) {
-        FileInfo f{};
-
-        std::ifstream inf{file_path, std::ios::binary};
-        inf.seekg(2 * sizeof(uint32_t));
-
-        inf.read(reinterpret_cast<char*>(&f.dim), sizeof(uint32_t));
-        inf.read(reinterpret_cast<char*>(&f.count), sizeof(uint64_t));
-
-        f.bytes = 3 * sizeof(uint32_t) + sizeof(uint64_t) + f.dim * f.count * sizeof(double) + sizeof(uint32_t);
-        return f;
-    }
-
-    bool verify(const std::string& file_path) {
-        std::ifstream inf{file_path, std::ios::binary};
-
-        uint32_t magic_bytes;
-        inf.read(reinterpret_cast<char*>(&magic_bytes), sizeof(uint32_t));
-        if (magic_bytes != s_magic_bytes) {
-            return false;
-        }
-
-        uint32_t version;
-        inf.read(reinterpret_cast<char*>(&version), sizeof(uint32_t));
-        if (version != s_version) {
-            return false;
-        }
-
-        uint32_t dimension;
-        inf.read(reinterpret_cast<char*>(&dimension), sizeof(uint32_t));
-        
-        uint64_t count;
-        inf.read(reinterpret_cast<char*>(&count), sizeof(uint64_t));
-        
-        uint32_t calc_crc_32{0xFFFFFFFF};
-        std::vector<double> data(dimension);
-
-        for (uint64_t i = 0; i < count; i++) {
-            char* d_ptr = reinterpret_cast<char*>(&data[0]);
-            inf.read(d_ptr, dimension * sizeof(double));
-            for (int j{0}; j < dimension * sizeof(double); j++) {
-                int index{(calc_crc_32 ^ d_ptr[j]) & 0xFF};
-                calc_crc_32 = (calc_crc_32 >> 8) ^ s_crc_32_tab[index];
-            }
-        }
-
-        calc_crc_32 ^= 0xFFFFFFFF;
-
-        uint32_t crc_32;
-        inf.read(reinterpret_cast<char*>(&crc_32), sizeof(uint32_t));
-
-        if (calc_crc_32 != crc_32)
-            return false;
-        
-        return true;
-    }
-
-    void append(const std::string& file_path, const std::vector<std::vector<double>>& data) {
-        const uint64_t append_count{data.size()};
-        const uint32_t append_dim{data[0].size()};
-
-        std::fstream iof{file_path, std::ios::in | std::ios::out | std::ios::binary};
-
-        iof.seekg(2 * sizeof(uint32_t), std::ios::beg); //magic number and version
-
-        uint32_t dimension;
-        iof.read(reinterpret_cast<char*>(&dimension), sizeof(uint32_t));
-        if (dimension != append_dim) {
-            return; //placeholder
-        }
-
-        uint64_t count;
-        iof.read(reinterpret_cast<char*>(&count), sizeof(uint64_t));
-        iof.seekg(-sizeof(uint64_t), std::ios::cur);
-        const uint64_t new_count{count + append_count};
-
-        iof.write(reinterpret_cast<const char*>(&new_count), sizeof(uint64_t));
-        
-        iof.seekg(dimension * count * sizeof(double), std::ios::cur); //data
-
-        uint32_t crc_32;
-        iof.read(reinterpret_cast<char*>(&crc_32), sizeof(uint32_t));
-
-        crc_32 ^= 0xFFFFFFFF; //undoing previos xor with ~0 before saving
-        
-        for (uint64_t i{0}; i < append_count; i++) {
-            const char* d_ptr{reinterpret_cast<const char*>(&data[i][0])};
-            iof.write(d_ptr, dimension * sizeof(double));
-
-            for (int j{0}; j < dimension * sizeof(double); j++) {
-                int index{(crc_32 ^ d_ptr[j]) & 0xFF};
-                crc_32 = (crc_32 >> 8) ^ s_crc_32_tab[index];
-            }
-        }
-
-        crc_32 ^= 0xFFFFFFFF;
-
-        iof.write(reinterpret_cast<char*>(&crc_32), sizeof(uint32_t));
-    }
 };
 #endif
