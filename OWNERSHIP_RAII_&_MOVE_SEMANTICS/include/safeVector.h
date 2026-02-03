@@ -1,3 +1,5 @@
+#ifndef SAFE_VECTOR_H
+#define SAFE_VECTOR_H
 #include <memory>
 #include <utility>
 #include <stdexcept>
@@ -176,3 +178,4 @@ public:
         return m_data.get() + m_size;
     }
 };
+#endif
