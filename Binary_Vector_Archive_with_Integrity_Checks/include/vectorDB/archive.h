@@ -11,12 +11,6 @@ private:
     static const uint32_t s_magic_bytes{0x56454344};
     static const uint32_t s_version{1};
 
-    struct FileInfo {
-        uint32_t dim;
-        uint64_t count;
-        uint64_t bytes;
-    };
-    
     static const inline uint32_t s_crc_32_tab[] = {
         0x00000000, 0x78af3c54, 0x5dd4fe21, 0x257bc275, 0x17237acb, 0x6f8c469f, 
         0x4af784ea, 0x3258b8be, 0x2e46f596, 0x56e9c9c2, 0x73920bb7, 0x0b3d37e3, 
@@ -63,12 +57,18 @@ private:
         0x0d1ed646, 0x75b1ea12, 0x50ca2867, 0x28651433
     };
 
+public: struct FileInfo {
+    uint32_t dim;
+    uint64_t count;
+    uint64_t bytes;
+};
+
 public:
     void save(const std::string& file_path, const std::vector<std::vector<double>>& data);
-    std::vector<std::vector<double>> load(const std::string& file_path);
+    std::vector<std::vector<double>> load(const std::string& file_path, bool already_verified);
     FileInfo info(const std::string& file_path);
     bool verify(const std::string& file_path);
     void append(const std::string& file_path, const std::vector<std::vector<double>>& data);
-
+    friend std::ostream& operator<<(std::ostream& out, const VectorArchive::FileInfo& f);
 };
 #endif

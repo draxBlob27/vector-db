@@ -62,7 +62,7 @@ void VectorArchive::save(const std::string &file_path, const std::vector<std::ve
     }
 }
 
-std::vector<std::vector<double>> VectorArchive::load(const std::string &file_path)
+std::vector<std::vector<double>> VectorArchive::load(const std::string &file_path, bool already_verified)
 {
     std::ifstream inf{file_path, std::ios::binary};
     if (!inf) {
@@ -111,14 +111,18 @@ std::vector<std::vector<double>> VectorArchive::load(const std::string &file_pat
             throw ArchiveError("Could not read file.");
         }
 
-        for (std::size_t j{0}; j < dimension * sizeof(double); j++)
-        {
-            int index{(calc_crc_32 ^ d_ptr[j]) & 0xFF};
-            calc_crc_32 = (calc_crc_32 >> 8) ^ s_crc_32_tab[index];
+        if (!already_verified) {
+            for (std::size_t j{0}; j < dimension * sizeof(double); j++)
+            {
+                int index{(calc_crc_32 ^ d_ptr[j]) & 0xFF};
+                calc_crc_32 = (calc_crc_32 >> 8) ^ s_crc_32_tab[index];
+            }
         }
+
     }
 
-    calc_crc_32 ^= 0xFFFFFFFF;
+    if (!already_verified)
+        calc_crc_32 ^= 0xFFFFFFFF;
 
     uint32_t crc_32;
     inf.read(reinterpret_cast<char *>(&crc_32), sizeof(uint32_t));
@@ -126,7 +130,7 @@ std::vector<std::vector<double>> VectorArchive::load(const std::string &file_pat
         throw ArchiveError("Could not read file.");
     }
 
-    if (calc_crc_32 != crc_32)
+    if (!already_verified && calc_crc_32 != crc_32)
         throw CorruptedDataError("CRC mismatch.");
 
     return data;
@@ -307,4 +311,11 @@ void VectorArchive::append(const std::string &file_path, const std::vector<std::
     if (iof.fail() | iof.bad()) {
         throw ArchiveError("Could not write in file.");
     }
+}
+
+std::ostream& operator<<(std::ostream& out, const VectorArchive::FileInfo& f) {
+    out << "Bytes: " << f.bytes << '\n';
+    out << "Dimension: " << f.dim << '\n';
+    out << "Count: " << f.count << '\n';
+    return out;
 }
