@@ -8,8 +8,8 @@
 class VectorArchive
 {
 private:
-    static const uint32_t s_magic_bytes{0x56454344};
-    static const uint32_t s_version{1};
+    static const inline uint32_t s_magic_bytes{0x56454344};
+    static const inline uint32_t s_version{1};
 
     static const inline uint32_t s_crc_32_tab[] = {
         0x00000000, 0x78af3c54, 0x5dd4fe21, 0x257bc275, 0x17237acb, 0x6f8c469f, 

@@ -19,3 +19,5 @@ Why: If you add a generic --verbose flag later, argc changes for every command, 
 6. Currently saving or generating very large data would be meaning to allocate a large amount of data. Either will solve in this iteration or later upon doin profiling.
 
 7. Yet to implement crc to header info.
+
+8. C++ static const member in header needs inline or out-of-class definition in .cpp — otherwise: undefined reference, gives linker error.

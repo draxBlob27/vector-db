@@ -8,6 +8,9 @@ void VectorArchive::save(const std::string &file_path, const std::vector<std::ve
     }
 
     const uint32_t dimension{data[0].size()};
+    if (!dimension) {
+        throw InvalidOperationError("Empty vectors.");
+    }
 
     uint32_t crc_32{0xFFFFFFFF};
 
@@ -16,12 +19,12 @@ void VectorArchive::save(const std::string &file_path, const std::vector<std::ve
         throw FileNotFoundError("Uh oh, file: " + file_path + " could not be opened for writing!\n");
     }
 
-    outf.write(reinterpret_cast<const char *>(&s_magic_bytes), sizeof(uint32_t));
+    outf.write(reinterpret_cast<const char*>(&VectorArchive::s_magic_bytes), sizeof(uint32_t));
     if (outf.bad() | outf.fail()) {
         throw InsufficientSpaceError("Insufficient space on disk.");
     }
 
-    outf.write(reinterpret_cast<const char *>(&s_version), sizeof(uint32_t));
+    outf.write(reinterpret_cast<const char *>(&VectorArchive::s_version), sizeof(uint32_t));
     if (outf.bad() | outf.fail()) {
         throw InsufficientSpaceError("Insufficient space on disk.");
     }
@@ -51,7 +54,7 @@ void VectorArchive::save(const std::string &file_path, const std::vector<std::ve
         for (std::size_t j{0}; j < dimension * sizeof(double); j++)
         { // we need crc every byte(ie, dimension*sizeof(double))
             int index{(crc_32 ^ d_ptr[j]) & 0xFF};
-            crc_32 = (crc_32 >> 8) ^ s_crc_32_tab[index];
+            crc_32 = (crc_32 >> 8) ^ VectorArchive::s_crc_32_tab[index];
         }
     }
 
