@@ -21,3 +21,5 @@ Why: If you add a generic --verbose flag later, argc changes for every command, 
 7. Yet to implement crc to header info.
 
 8. C++ static const member in header needs inline or out-of-class definition in .cpp — otherwise: undefined reference, gives linker error.
+
+9. to implement sanity checks for too much RAM allocation
