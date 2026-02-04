@@ -2,6 +2,7 @@
 
 void VectorArchive::save(const std::string &file_path, const std::vector<std::vector<double>> &data)
 {
+    uint32_t crc_32_header{0xFFFFFFFF};
     const uint64_t count{data.size()};
     if (!count) {
         throw InvalidOperationError("No data to store.");
@@ -11,33 +12,43 @@ void VectorArchive::save(const std::string &file_path, const std::vector<std::ve
     if (!dimension) {
         throw InvalidOperationError("Empty vectors.");
     }
-
-    uint32_t crc_32{0xFFFFFFFF};
-
+    
     std::ofstream outf{file_path, std::ios::binary};
     if (!outf) {
         throw FileNotFoundError("Uh oh, file: " + file_path + " could not be opened for writing!\n");
     }
-
+    
     outf.write(reinterpret_cast<const char*>(&VectorArchive::s_magic_bytes), sizeof(uint32_t));
     if (outf.bad() | outf.fail()) {
         throw InsufficientSpaceError("Insufficient space on disk.");
     }
-
+    update_crc(crc_32_header, &s_magic_bytes, sizeof(s_magic_bytes));
+    
     outf.write(reinterpret_cast<const char *>(&VectorArchive::s_version), sizeof(uint32_t));
     if (outf.bad() | outf.fail()) {
         throw InsufficientSpaceError("Insufficient space on disk.");
     }
+    update_crc(crc_32_header, &s_version, sizeof(s_version));
+
     outf.write(reinterpret_cast<const char *>(&dimension), sizeof(uint32_t));
     if (outf.bad() | outf.fail()) {
         throw InsufficientSpaceError("Insufficient space on disk.");
     }
-
+    update_crc(crc_32_header, &dimension, sizeof(dimension));
+    
     outf.write(reinterpret_cast<const char *>(&count), sizeof(uint64_t));
     if (outf.bad() | outf.fail()) {
         throw InsufficientSpaceError("Insufficient space on disk.");
     }
+    update_crc(crc_32_header, &count, sizeof(count));
+    
+    crc_32_header ^= 0xFFFFFFFF;
+    outf.write(reinterpret_cast<char*>(&crc_32_header), sizeof(crc_32_header));
+    if (outf.bad() | outf.fail()) {
+        throw InsufficientSpaceError("Insufficient space on disk.");
+    }
 
+    uint32_t crc_32_data{0xFFFFFFFF};
     for (uint64_t i{0}; i < count; i++)
     {
         const unsigned char *d_ptr = reinterpret_cast<const unsigned char *>(&data[i][0]);
@@ -51,15 +62,12 @@ void VectorArchive::save(const std::string &file_path, const std::vector<std::ve
             throw InsufficientSpaceError("Insufficient space on disk.");
         }
 
-        for (std::size_t j{0}; j < dimension * sizeof(double); j++)
-        { // we need crc every byte(ie, dimension*sizeof(double))
-            int index{static_cast<int>((crc_32 ^ d_ptr[j]) & 0xFF)};
-            crc_32 = (crc_32 >> 8) ^ VectorArchive::s_crc_32_tab[index];
-        }
+        update_crc(crc_32_data, d_ptr, dimension * sizeof(double));
     }
 
-    crc_32 ^= 0xFFFFFFFF;
-    outf.write(reinterpret_cast<char *>(&crc_32), sizeof(uint32_t));
+
+    crc_32_data ^= 0xFFFFFFFF;
+    outf.write(reinterpret_cast<char *>(&crc_32_data), sizeof(uint32_t));
     if (outf.bad() | outf.fail()) {
         throw InsufficientSpaceError("Insufficient space on disk.");
     }
@@ -127,13 +135,13 @@ std::vector<std::vector<double>> VectorArchive::load(const std::string &file_pat
     if (!already_verified)
         calc_crc_32 ^= 0xFFFFFFFF;
 
-    uint32_t crc_32;
-    inf.read(reinterpret_cast<char *>(&crc_32), sizeof(uint32_t));
+    uint32_t crc_32_data;
+    inf.read(reinterpret_cast<char *>(&crc_32_data), sizeof(uint32_t));
     if (inf.fail() | inf.bad()) {
         throw ArchiveError("Could not read file.");
     }
 
-    if (!already_verified && calc_crc_32 != crc_32)
+    if (!already_verified && calc_crc_32 != crc_32_data)
         throw CorruptedDataError("CRC mismatch.");
 
     return data;
@@ -225,13 +233,13 @@ bool VectorArchive::verify(const std::string &file_path)
 
     calc_crc_32 ^= 0xFFFFFFFF;
 
-    uint32_t crc_32;
-    inf.read(reinterpret_cast<char *>(&crc_32), sizeof(uint32_t));
+    uint32_t crc_32_data;
+    inf.read(reinterpret_cast<char *>(&crc_32_data), sizeof(uint32_t));
     if (inf.fail() | inf.bad()) {
         throw ArchiveError("Could not read file.");
     }
 
-    if (calc_crc_32 != crc_32)
+    if (calc_crc_32 != crc_32_data)
         return false;
 
     return true;
@@ -279,13 +287,13 @@ void VectorArchive::append(const std::string &file_path, const std::vector<std::
 
     iof.seekg(dimension * count * sizeof(double), std::ios::cur); // data
 
-    uint32_t crc_32;
-    iof.read(reinterpret_cast<char *>(&crc_32), sizeof(uint32_t));
+    uint32_t crc_32_data;
+    iof.read(reinterpret_cast<char *>(&crc_32_data), sizeof(uint32_t));
     if (iof.fail() | iof.bad()) {
         throw ArchiveError("Could not read file.");
     }
 
-    crc_32 ^= 0xFFFFFFFF; // undoing previos xor with ~0 before saving
+    crc_32_data ^= 0xFFFFFFFF; // undoing previos xor with ~0 before saving
 
     iof.seekg(-sizeof(uint32_t), std::ios::cur);
 
@@ -303,14 +311,14 @@ void VectorArchive::append(const std::string &file_path, const std::vector<std::
 
         for (std::size_t j{0}; j < dimension * sizeof(double); j++)
         {
-            int index{static_cast<int>((crc_32 ^ d_ptr[j]) & 0xFF)};
-            crc_32 = (crc_32 >> 8) ^ s_crc_32_tab[index];
+            int index{static_cast<int>((crc_32_data ^ d_ptr[j]) & 0xFF)};
+            crc_32_data = (crc_32_data >> 8) ^ s_crc_32_tab[index];
         }
     }
 
-    crc_32 ^= 0xFFFFFFFF;
+    crc_32_data ^= 0xFFFFFFFF;
 
-    iof.write(reinterpret_cast<char *>(&crc_32), sizeof(uint32_t));
+    iof.write(reinterpret_cast<char *>(&crc_32_data), sizeof(uint32_t));
     if (iof.fail() | iof.bad()) {
         throw ArchiveError("Could not write in file.");
     }

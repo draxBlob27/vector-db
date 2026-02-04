@@ -56,6 +56,13 @@ private:
         0x7e8cddf1, 0x0623e1a5, 0x1a3dac8d, 0x629290d9, 0x47e952ac, 0x3f466ef8, 
         0x0d1ed646, 0x75b1ea12, 0x50ca2867, 0x28651433
     };
+    static void inline update_crc(uint32_t& crc_32, const void* data, size_t size) {
+        const unsigned char* p = static_cast<const unsigned char*>(data);
+        for (size_t i{0}; i < size; i++) {
+            int index{static_cast<int>((crc_32 ^ p[i]) & 0xFF)};
+            crc_32 = (crc_32 >> 8) ^ s_crc_32_tab[index];
+        }
+    }
 
 public: struct FileInfo {
     uint32_t dim;
