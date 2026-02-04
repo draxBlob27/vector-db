@@ -16,10 +16,16 @@ Why: If you add a generic --verbose flag later, argc changes for every command, 
 
 5. [random number genration](https://www.learncpp.com/cpp-tutorial/generating-random-numbers-using-mersenne-twister/)
 
-6. Currently saving or generating very large data would be meaning to allocate a large amount of data. Either will solve in this iteration or later upon doin profiling.
+6. Currently saving or generating very large data would be meaning to allocate a large amount of data. Either will solve in this iteration by appending in chunks or later upon doin profiling.
 
 7. Yet to implement crc to header info.
 
 8. C++ static const member in header needs inline or out-of-class definition in .cpp — otherwise: undefined reference, gives linker error.
 
 9. to implement sanity checks for too much RAM allocation
+
+10. Keeping singgle crc for both data and header, was kinda perfect for integrtiy, but was very expensiv
+to handle, as i aint using any libraries, so during append, to update crc with new header, i would have to
+read all data again each time, wihch was very slow. Soln was to compromise on seucirty a bit, and implement
+sepearate crcs for header and data. Thatway perf can be improved.
+ 

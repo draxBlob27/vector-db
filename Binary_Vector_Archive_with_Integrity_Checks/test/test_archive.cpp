@@ -24,9 +24,25 @@ std::vector<std::vector<double>> generateData(const int dim, const int count, bo
 class VectorArchive_test : public ::testing::Test{
 protected:
     VectorArchive vecd{};
+    std::vector<std::vector<double>> test_vector;
+    std::vector<std::vector<double>> loaded_vector;
+    std::string filepath{"../dump/correct_save.bin"};
 };
 //correct loading
 TEST_F(VectorArchive_test, correct_save) {
-    EXPECT_NO_THROW(vecd.save("../dump/correct_save.bin", generateData(128, 10, 1)));
+    test_vector = generateData(128, 10, 0);
+    EXPECT_NO_THROW(vecd.save(filepath, test_vector));
+    EXPECT_NO_THROW(loaded_vector = vecd.load(filepath, false));
+    ASSERT_EQ(loaded_vector, test_vector);
+}
+
+TEST_F(VectorArchive_test, empty_data) {
+    test_vector = {{}};
+    EXPECT_THROW(vecd.save(filepath, test_vector), InvalidOperationError);
+}
+
+TEST_F(VectorArchive_test, dimension_mismatch) {
+    test_vector = {{1, 2, 4}, {4, 5}};
+    EXPECT_THROW(vecd.save(filepath, test_vector), InvalidOperationError);
 }
 
