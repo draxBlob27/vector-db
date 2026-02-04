@@ -7,7 +7,7 @@ void VectorArchive::save(const std::string &file_path, const std::vector<std::ve
         throw InvalidOperationError("No data to store.");
     }
 
-    const uint32_t dimension{data[0].size()};
+    const uint32_t dimension{static_cast<uint32_t>(data[0].size())};
     if (!dimension) {
         throw InvalidOperationError("Empty vectors.");
     }
@@ -53,7 +53,7 @@ void VectorArchive::save(const std::string &file_path, const std::vector<std::ve
 
         for (std::size_t j{0}; j < dimension * sizeof(double); j++)
         { // we need crc every byte(ie, dimension*sizeof(double))
-            int index{(crc_32 ^ d_ptr[j]) & 0xFF};
+            int index{static_cast<int>((crc_32 ^ d_ptr[j]) & 0xFF)};
             crc_32 = (crc_32 >> 8) ^ VectorArchive::s_crc_32_tab[index];
         }
     }
@@ -117,7 +117,7 @@ std::vector<std::vector<double>> VectorArchive::load(const std::string &file_pat
         if (!already_verified) {
             for (std::size_t j{0}; j < dimension * sizeof(double); j++)
             {
-                int index{(calc_crc_32 ^ d_ptr[j]) & 0xFF};
+                int index{static_cast<int>((calc_crc_32 ^ d_ptr[j]) & 0xFF)};
                 calc_crc_32 = (calc_crc_32 >> 8) ^ s_crc_32_tab[index];
             }
         }
@@ -218,7 +218,7 @@ bool VectorArchive::verify(const std::string &file_path)
 
         for (std::size_t j{0}; j < dimension * sizeof(double); j++)
         {
-            int index{(calc_crc_32 ^ d_ptr[j]) & 0xFF};
+            int index{static_cast<int>((calc_crc_32 ^ d_ptr[j]) & 0xFF)};
             calc_crc_32 = (calc_crc_32 >> 8) ^ s_crc_32_tab[index];
         }
     }
@@ -243,7 +243,7 @@ void VectorArchive::append(const std::string &file_path, const std::vector<std::
     if (!append_count) {
         throw InvalidOperationError("no data to append.");
     }
-    const uint32_t append_dim{data[0].size()};
+    const uint32_t append_dim{static_cast<uint32_t>(data[0].size())};
 
     std::fstream iof{file_path, std::ios::in | std::ios::out | std::ios::binary};
     if (!iof) {
@@ -303,7 +303,7 @@ void VectorArchive::append(const std::string &file_path, const std::vector<std::
 
         for (std::size_t j{0}; j < dimension * sizeof(double); j++)
         {
-            int index{(crc_32 ^ d_ptr[j]) & 0xFF};
+            int index{static_cast<int>((crc_32 ^ d_ptr[j]) & 0xFF)};
             crc_32 = (crc_32 >> 8) ^ s_crc_32_tab[index];
         }
     }
