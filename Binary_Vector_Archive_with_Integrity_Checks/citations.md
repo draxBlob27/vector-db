@@ -28,4 +28,38 @@ Why: If you add a generic --verbose flag later, argc changes for every command, 
 to handle, as i aint using any libraries, so during append, to update crc with new header, i would have to
 read all data again each time, wihch was very slow. Soln was to compromise on seucirty a bit, and implement
 sepearate crcs for header and data. Thatway perf can be improved.
- 
+
+11. currently, one thing irking me is, that files upon interuption are left with partial data.
+Will go thorugh it some other day.
+
+12. Taking 12 secs to save 1M vectors with 128 dim.
+
+Reserve vector capacity before loading - avoid reallocations
+Use binary write() instead of operator<< for floats (if not already)
+Write in larger chunks - buffer multiple vectors before write()
+Check if you're flushing too often - only flush at end
+
+sanilparmar@Sanils-MacBook-Air build % ./examples/myCLI create large_data.bin 128 1 --random 
+0.244958
+sanilparmar@Sanils-MacBook-Air build % ./examples/myCLI create large_data.bin 128 10 --random
+0.429541
+sanilparmar@Sanils-MacBook-Air build % ./examples/myCLI create large_data.bin 128 100 --random
+1.44333
+sanilparmar@Sanils-MacBook-Air build % ./examples/myCLI create large_data.bin 128 1000 --random
+10.0122
+sanilparmar@Sanils-MacBook-Air build % ./examples/myCLI create large_data.bin 128 10000 --random
+113.9
+sanilparmar@Sanils-MacBook-Air build % ./examples/myCLI create large_data.bin 128 100000 --random
+743.062
+sanilparmar@Sanils-MacBook-Air build % ./examples/myCLI create large_data.bin 128 1000000 --random
+7684.73
+
+13. Who own the responsiilgty to flush the buffer, should be handlend by flag, not indexes as they disappear after loop.
+
+591.142 -> copying data to buffer
+1621.74 -> buffer + write
+6916.85 -> crc + buffer
+7684.73 -> direct dump + crc without buffer
+7621.97 -> buffer + crc + write
+
+so crc calc is the bottle neck here

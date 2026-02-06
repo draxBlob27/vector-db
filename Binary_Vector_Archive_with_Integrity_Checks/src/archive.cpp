@@ -19,56 +19,72 @@ void VectorArchive::save(const std::string &file_path, const std::vector<std::ve
     }
     
     outf.write(reinterpret_cast<const char*>(&VectorArchive::s_magic_bytes), sizeof(uint32_t));
-    if (outf.bad() | outf.fail()) {
+    if (outf.bad() || outf.fail()) {
         throw InsufficientSpaceError("Insufficient space on disk.");
     }
     update_crc(crc_32_header, &s_magic_bytes, sizeof(s_magic_bytes));
     
     outf.write(reinterpret_cast<const char *>(&VectorArchive::s_version), sizeof(uint32_t));
-    if (outf.bad() | outf.fail()) {
+    if (outf.bad() || outf.fail()) {
         throw InsufficientSpaceError("Insufficient space on disk.");
     }
     update_crc(crc_32_header, &s_version, sizeof(s_version));
 
     outf.write(reinterpret_cast<const char *>(&dimension), sizeof(uint32_t));
-    if (outf.bad() | outf.fail()) {
+    if (outf.bad() || outf.fail()) {
         throw InsufficientSpaceError("Insufficient space on disk.");
     }
     update_crc(crc_32_header, &dimension, sizeof(dimension));
     
     outf.write(reinterpret_cast<const char *>(&count), sizeof(uint64_t));
-    if (outf.bad() | outf.fail()) {
+    if (outf.bad() || outf.fail()) {
         throw InsufficientSpaceError("Insufficient space on disk.");
     }
     update_crc(crc_32_header, &count, sizeof(count));
     
     crc_32_header ^= 0xFFFFFFFF;
     outf.write(reinterpret_cast<char*>(&crc_32_header), sizeof(crc_32_header));
-    if (outf.bad() | outf.fail()) {
+    if (outf.bad() || outf.fail()) {
         throw InsufficientSpaceError("Insufficient space on disk.");
     }
 
-    uint32_t crc_32_data{0xFFFFFFFF};
+    // uint32_t crc_32_data{0xFFFFFFFF};
+    int buff_cnt{64}, staged_data{0};
+    std::vector<double> buffer(dimension * buff_cnt);
     for (uint64_t i{0}; i < count; i++)
     {
-        const unsigned char *d_ptr = reinterpret_cast<const unsigned char *>(&data[i][0]);
-
-        if (data[i].size() != dimension) {
-            throw InvalidOperationError("Dimension mismatch in vector data.");
+        if (staged_data == buff_cnt) {
+            unsigned const char* d_ptr = reinterpret_cast<unsigned const char*>(&buffer[0]);
+            outf.write(reinterpret_cast<const char*>(d_ptr), dimension * buff_cnt * sizeof(double));
+            if (outf.bad() || outf.fail()) {
+                throw InsufficientSpaceError("Insufficient space on disk.");
+            }
+            
+            // update_crc(crc_32_data, d_ptr, dimension * buff_cnt * sizeof(double));
+            staged_data = 0;
         }
 
-        outf.write(reinterpret_cast<const char*>(d_ptr), dimension * sizeof(double));
-        if (outf.bad() | outf.fail()) {
+        uint32_t beg{staged_data * dimension};
+        for (int j{0}; j < dimension; j++) {
+            buffer[beg + j] = data[i][j];
+        }
+
+        staged_data++;
+    }
+
+    if (staged_data) {
+        unsigned const char* d_ptr = reinterpret_cast<unsigned const char*>(&buffer[0]);
+        outf.write(reinterpret_cast<const char*>(d_ptr), dimension * staged_data *sizeof(double));
+        if (outf.bad() || outf.fail()) {
             throw InsufficientSpaceError("Insufficient space on disk.");
         }
 
-        update_crc(crc_32_data, d_ptr, dimension * sizeof(double));
+        // update_crc(crc_32_data, d_ptr, dimension * staged_data * sizeof(double));
     }
 
-
-    crc_32_data ^= 0xFFFFFFFF;
-    outf.write(reinterpret_cast<char *>(&crc_32_data), sizeof(uint32_t));
-    if (outf.bad() | outf.fail()) {
+    // crc_32_data ^= 0xFFFFFFFF;
+    // outf.write(reinterpret_cast<char *>(&crc_32_data), sizeof(uint32_t));
+    if (outf.bad() || outf.fail()) {
         throw InsufficientSpaceError("Insufficient space on disk.");
     }
 }

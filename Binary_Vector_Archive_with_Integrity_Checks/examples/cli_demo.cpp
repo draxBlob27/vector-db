@@ -3,7 +3,25 @@
 #include <vector>
 #include <random>
 #include <iostream>
+#include <chrono>
 #include "archive.h"
+
+class Timer {
+private:
+    using millisec = std::chrono::duration<double, std::ratio<1, 1000>>;
+    using Clock = std::chrono::high_resolution_clock;
+
+    std::chrono::time_point<Clock> m_beg{Clock::now()};
+
+public:
+    void reset() {
+        m_beg = Clock::now();
+    }
+
+    double elapsed() const {
+        return std::chrono::duration_cast<millisec>(Clock::now() - m_beg).count();
+    }
+};
 
 std::vector<std::vector<double>> generateData(const int dim, const int count, bool isZero)
 {
@@ -36,11 +54,13 @@ Commands:
 
 int main(int argc, char **argv)
 {
+    Timer t{};
     try
     {
         if (argc < 3 || argc > 6)
         {
             // call help
+            std::cout << "Length inappropriate\n";
             description();
         }
         else
@@ -55,7 +75,7 @@ int main(int argc, char **argv)
                         std::cout << "Dimension can't be negative.";
                         return 1;
                     }
-                    const uint32_t dim{std::stoul(argv[3])};
+                    const uint32_t dim{static_cast<uint32_t>(std::stoul(argv[3]))};
                     if (argv[4][0] == '-') {
                         std::cout << "Count can't be negative.";
                         return 1;
@@ -69,7 +89,7 @@ int main(int argc, char **argv)
                         std::cout << "Dimension can't be negative.";
                         return 1;
                     }
-                    const uint32_t dim{std::stoul(argv[3])};
+                    const uint32_t dim{static_cast<uint32_t>(std::stoul(argv[3]))};
                     if (argv[4][0] == '-') {
                         std::cout << "Count can't be negative.";
                         return 1;
@@ -79,13 +99,17 @@ int main(int argc, char **argv)
                     std::string isRandom{argv[5]};
 
                     if (isRandom == "--random") {
-                        vecd.save(filepath, generateData(dim, count, 0));
+                        std::vector<std::vector<double>> data{generateData(dim, count, 0)};
+                        t.reset();
+                        vecd.save(filepath, data);
+                        std::cout << t.elapsed() << '\n';
                     } else {
                         std::cout << "Invalid flag with save.";
                     }
 
                 } else {
                     //call help
+                    std::cout << "Error in create\n";
                     description();
                 }
             }
@@ -97,6 +121,7 @@ int main(int argc, char **argv)
                     vecd.append(filepath, generateData(f_info.dim, f_info.count, 1)); //known, will update later
                 } else {
                     //call help
+                    std::cout << "Error in append\n";
                     description();
                 }
             }
