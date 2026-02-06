@@ -57,7 +57,9 @@ sanilparmar@Sanils-MacBook-Air build % ./examples/myCLI create large_data.bin 12
 13. Who own the responsiilgty to flush the buffer, should be handlend by flag, not indexes as they disappear after loop.
 
 591.142 -> copying data to buffer
-1621.74 -> buffer + write
+~1400~ -> buffer + write
+~1500 -> no buffer, no crc
+
 6916.85 -> crc + buffer
 7684.73 -> direct dump + crc without buffer
 7621.97 -> buffer + crc + write

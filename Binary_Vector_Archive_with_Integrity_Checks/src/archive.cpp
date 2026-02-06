@@ -48,11 +48,14 @@ void VectorArchive::save(const std::string &file_path, const std::vector<std::ve
         throw InsufficientSpaceError("Insufficient space on disk.");
     }
 
-    // uint32_t crc_32_data{0xFFFFFFFF};
-    int buff_cnt{64}, staged_data{0};
+    uint32_t crc_32_data{0xFFFFFFFF};
+    int buff_cnt{32}, staged_data{0};
     std::vector<double> buffer(dimension * buff_cnt);
     for (uint64_t i{0}; i < count; i++)
     {
+        if (dimension != data[i].size()) {
+            throw InvalidOperationError("Dimension of data mismatch.");
+        }
         if (staged_data == buff_cnt) {
             unsigned const char* d_ptr = reinterpret_cast<unsigned const char*>(&buffer[0]);
             outf.write(reinterpret_cast<const char*>(d_ptr), dimension * buff_cnt * sizeof(double));
@@ -60,7 +63,7 @@ void VectorArchive::save(const std::string &file_path, const std::vector<std::ve
                 throw InsufficientSpaceError("Insufficient space on disk.");
             }
             
-            // update_crc(crc_32_data, d_ptr, dimension * buff_cnt * sizeof(double));
+            update_crc(crc_32_data, d_ptr, dimension * buff_cnt * sizeof(double));
             staged_data = 0;
         }
 
@@ -79,11 +82,11 @@ void VectorArchive::save(const std::string &file_path, const std::vector<std::ve
             throw InsufficientSpaceError("Insufficient space on disk.");
         }
 
-        // update_crc(crc_32_data, d_ptr, dimension * staged_data * sizeof(double));
+        update_crc(crc_32_data, d_ptr, dimension * staged_data * sizeof(double));
     }
 
-    // crc_32_data ^= 0xFFFFFFFF;
-    // outf.write(reinterpret_cast<char *>(&crc_32_data), sizeof(uint32_t));
+    crc_32_data ^= 0xFFFFFFFF;
+    outf.write(reinterpret_cast<char *>(&crc_32_data), sizeof(uint32_t));
     if (outf.bad() || outf.fail()) {
         throw InsufficientSpaceError("Insufficient space on disk.");
     }
