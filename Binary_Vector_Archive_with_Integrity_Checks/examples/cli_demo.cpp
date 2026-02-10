@@ -3,6 +3,7 @@
 #include <vector>
 #include <random>
 #include <iostream>
+#include <cstdint>
 #include <chrono>
 #include "archive.h"
 
@@ -23,7 +24,7 @@ public:
     }
 };
 
-std::vector<std::vector<double>> generateData(const int dim, const int count, bool isZero)
+std::vector<std::vector<double>> generateData(const int dim, const int count, bool isZero=0)
 {
     std::vector<std::vector<double>> res(count, std::vector<double>(dim, 0));
     if (isZero)
@@ -75,12 +76,12 @@ int main(int argc, char **argv)
                         std::cout << "Dimension can't be negative.";
                         return 1;
                     }
-                    const uint32_t dim{static_cast<uint32_t>(std::stoul(argv[3]))};
+                    const std::uint32_t dim{static_cast<std::uint32_t>(std::stoul(argv[3]))};
                     if (argv[4][0] == '-') {
                         std::cout << "Count can't be negative.";
                         return 1;
                     }
-                    const uint64_t count{std::stoull(argv[4])};
+                    const std::uint64_t count{std::stoull(argv[4])};
 
                     vecd.save(filepath, generateData(dim, count, 1));
                 } else if (argc == 6) { //random data
@@ -89,12 +90,12 @@ int main(int argc, char **argv)
                         std::cout << "Dimension can't be negative.";
                         return 1;
                     }
-                    const uint32_t dim{static_cast<uint32_t>(std::stoul(argv[3]))};
+                    const std::uint32_t dim{static_cast<std::uint32_t>(std::stoul(argv[3]))};
                     if (argv[4][0] == '-') {
                         std::cout << "Count can't be negative.";
                         return 1;
                     }
-                    const uint64_t count{std::stoull(argv[4])};
+                    const std::uint64_t count{std::stoull(argv[4])};
 
                     std::string isRandom{argv[5]};
 

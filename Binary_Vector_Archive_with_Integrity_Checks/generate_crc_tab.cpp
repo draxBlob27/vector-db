@@ -3,10 +3,10 @@
 #include <cstdint>
 
 int main() {
-    uint32_t poly = 0x56454344; //"VECD"
+    std::uint32_t poly = 0x56454344; //"VECD"
 
     for (int i = 0; i < 256; i++) {
-        uint32_t crc = i;
+        std::uint32_t crc = i;
 
         for (int j = 0; j < 8; j++) {
             // Check the Lowest Bit (LSB) of the *current* crc

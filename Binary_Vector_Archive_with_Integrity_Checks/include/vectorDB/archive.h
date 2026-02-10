@@ -3,15 +3,16 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
+#include <cstdint>
 #include "errors.h"
 
 class VectorArchive
 {
 private:
-    static const inline uint32_t s_magic_bytes{0x56454344};
-    static const inline uint32_t s_version{1};
+    static const inline std::uint32_t s_magic_bytes{0x56454344};
+    static const inline std::uint32_t s_version{1};
 
-    static const inline uint32_t s_crc_32_tab[] = {
+    static const inline std::uint32_t s_crc_32_tab[] = {
         0x00000000, 0x78af3c54, 0x5dd4fe21, 0x257bc275, 0x17237acb, 0x6f8c469f, 
         0x4af784ea, 0x3258b8be, 0x2e46f596, 0x56e9c9c2, 0x73920bb7, 0x0b3d37e3, 
         0x39658f5d, 0x41cab309, 0x64b1717c, 0x1c1e4d28, 0x5c8deb2c, 0x2422d778, 
@@ -56,7 +57,7 @@ private:
         0x7e8cddf1, 0x0623e1a5, 0x1a3dac8d, 0x629290d9, 0x47e952ac, 0x3f466ef8, 
         0x0d1ed646, 0x75b1ea12, 0x50ca2867, 0x28651433
     };
-    static void inline update_crc(uint32_t& crc_32, const void* data, size_t size) {
+    static void inline update_crc(std::uint32_t& crc_32, const void* data, size_t size) {
         const unsigned char* p = static_cast<const unsigned char*>(data);
         for (size_t i{0}; i < size; i++) {
             int index{static_cast<int>((crc_32 ^ p[i]) & 0xFF)};
@@ -65,9 +66,9 @@ private:
     }
 
 public: struct FileInfo {
-    uint32_t dim;
-    uint64_t count;
-    uint64_t bytes;
+    std::uint32_t dim;
+    std::uint64_t count;
+    std::uint64_t bytes;
 };
 
 public:

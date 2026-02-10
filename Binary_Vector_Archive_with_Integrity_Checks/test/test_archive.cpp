@@ -1,10 +1,11 @@
 #include <gtest/gtest.h>
 #include <random>
+#include <cstdint>
 #include <print>
 #include "archive.h"
 #include <iostream>
 
-std::vector<std::vector<double>> generateData(const int dim, const int count, bool isZero)
+std::vector<std::vector<double>> generateData(const int dim, const int count, bool isZero=0)
 {
     std::vector<std::vector<double>> res(count, std::vector<double>(dim, 0));
     if (isZero)
@@ -63,7 +64,7 @@ TEST_F(VectorArchive_test, overwrite_with_shrink) {
     vecd.save(filepath, test_vector);
     VectorArchive::FileInfo f2 = vecd.info(filepath);
 
-    EXPECT_NE((std::vector<uint64_t>{f1.bytes, f1.count, f1.dim}), (std::vector<uint64_t>{f2.bytes, f2.count, f2.dim}));
+    EXPECT_NE((std::vector<std::uint64_t>{f1.bytes, f1.count, f1.dim}), (std::vector<std::uint64_t>{f2.bytes, f2.count, f2.dim}));
 }
 
 TEST_F(VectorArchive_test, test_corruption) {
@@ -173,7 +174,7 @@ TEST_F(VectorArchive_test, similar_data_int) {//if same data in diff files
     VectorArchive::FileInfo f1 = vecd.info(fpath1);
     VectorArchive::FileInfo f2 = vecd.info(fpath2);
 
-    EXPECT_EQ((std::vector<uint64_t>{f1.bytes, f1.count, f1.dim}), (std::vector<uint64_t>{f2.bytes, f2.count, f2.dim}));
+    EXPECT_EQ((std::vector<std::uint64_t>{f1.bytes, f1.count, f1.dim}), (std::vector<std::uint64_t>{f2.bytes, f2.count, f2.dim}));
 }
 
 TEST_F(VectorArchive_test, correct_append) {//checks correct append
@@ -189,4 +190,13 @@ TEST_F(VectorArchive_test, correct_append) {//checks correct append
     EXPECT_NO_THROW(loaded_vector = vecd.load(filepath, false));
 
     EXPECT_EQ(loaded_vector, combined_vector);
+}
+
+TEST_F(VectorArchive_test, incorrect_append) {//checks incorrect append
+    test_vector = generateData(127, 10, 0);
+    std::string filepath{"../dump/correct_append.bin"};
+    EXPECT_NO_THROW(vecd.save(filepath, test_vector));
+    
+    std::vector<std::vector<double>> append_vector{generateData(128, 12, 0)};
+    EXPECT_THROW(vecd.append(filepath, append_vector), InvalidOperationError);
 }
