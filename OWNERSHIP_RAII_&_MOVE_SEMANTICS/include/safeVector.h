@@ -16,10 +16,10 @@ public:
         :m_size{size}, m_capacity{size}, m_data{m_capacity ? std::make_unique<T[]>(m_capacity) : nullptr}
     {}
 
-    ~SafeVector() {
-        m_size = 0;
-        m_capacity = 0;
-    }
+    // ~SafeVector() {
+    //     m_size = 0;
+    //     m_capacity = 0;
+    // } not needed at all, because of using smart pointers or RAII aware data types
 
     SafeVector(const SafeVector& a)
         :m_size{a.m_size},
@@ -62,7 +62,7 @@ public:
             auto temp_data = std::make_unique<T[]>(m_capacity ? 2 * m_capacity : 1);
             std::move(m_data.get(), m_data.get() + m_size, temp_data.get());
             temp_data[m_size] = std::move(value);
-            m_data = std::move(temp_data);
+            m_data = std::move(temp_data); //uses move assingment of type T, if T is unique ptr then also works fine.
             m_capacity = m_capacity ? 2 * m_capacity : 1;
         } else {
             m_data[m_size] = std::move(value);
@@ -71,7 +71,7 @@ public:
         m_size++;
     }
 
-    void push_back(const T& value) { //uses pass by value
+    void push_back(const T& value) { //uses pass by const l-value ref, if passes by value, compiler will, try to promote (failes), numerical ocnversion using user defined types(falis), converts to const l-value ref(passes).
         if (m_size == m_capacity) {
             //alloate new memory
             //move data from current memeory to new memory
@@ -79,7 +79,7 @@ public:
         
             auto temp_data = std::make_unique<T[]>(m_capacity ? 2 * m_capacity : 1);
             std::move(m_data.get(), m_data.get() + m_size, temp_data.get());
-            temp_data[m_size] = value;
+            temp_data[m_size] = value; //use copy assignment of type T, if T is unique ptr, fails to compile as its coppy constructor is deleted.
             m_data = std::move(temp_data);
             m_capacity = m_capacity ? 2 * m_capacity : 1;
         } else {
