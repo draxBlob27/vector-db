@@ -21,48 +21,122 @@ enum class Metric {
     DotProduct
 };
 
-struct okTag {};
-struct errTag {};
-
-template <typename T, typename E>
-struct Result {
-private:
-    std::variant<T, E> res;
+template <typename T>
+class Ok {
+    T value;
 
 public:
-    Result(okTag, const T& t) :res{t} 
+
+    explicit Ok(T value) //disallows implicit conversion. To not get surprised by compiler implicit conversions
+        :value{std::move(value)}
     {}
 
-    Result (errTag, const E& e) :res{e}
-    {}
-
-    bool is_ok() const {
-        return res.index() == 0;
+    T copy_value() const {
+        return value;
     }
 
-    const T& value() const {
-        if (!is_ok()) {
-            throw std::runtime_error("Value() called on error result.");
-        }
-
-        return std::get<0>(res);
-    }
-
-    const E& error() const {
-        if (is_ok()) {
-            throw std::runtime_error("Error() called on valid result.");
-        }
-
-        return std::get<1>(res);
+    T&& take_value() {
+        return std::move(value);
     }
 };
+
+
+
+template <typename T>
+class Err {
+    T value;
+    
+    public:
+    explicit Err(T value)
+    :value{std::move(value)}
+    {}
+    
+    T copy_value() const {
+        return value;
+    }
+    
+    T&& take_value() {
+        return std::move(value);
+    }
+};
+
+template <typename OkT, typename ErrT>
+class Result {
+    std::variant<Ok<OkT>, Err<ErrT>> variant;
+    
+    public:
+    Result(Ok<OkT> value)
+    :variant(std::move(value))
+    {}
+    
+    Result(Err<ErrT> value)
+    :variant(std::move(value))
+    {}
+    
+    bool is_ok() const {
+        return std::holds_alternative<Ok<OkT>>(variant);
+    }
+    bool is_err() const {
+        return std::holds_alternative<Err<ErrT>>(variant);
+    }
+    OkT ok_value() const {
+        return std::get<Ok<OkT>>(variant).copy_value(); //returns a copy, throws upon wrong call.
+    }
+    ErrT err_value() const{
+        return std::get<Err<ErrT>>(variant).copy_value();
+    }
+    
+    OkT&& take_ok_value() {
+        return std::get<Ok<OkT>>(variant).take_value(); //returns ownership, throws upon wrong call, after operation class value is invalid/empty;
+    }
+    ErrT&& take_err_value() {
+        return std::get<Err<ErrT>>(variant).take_value();
+    }
+};
+
+struct Unit{};
+template<typename ErrT>
+class Result<Unit, ErrT> {
+    std::variant<Ok<Unit>, Err<ErrT>> variant;
+    
+    public:
+    Result(Ok<Unit> value)
+    :variant(std::move(value))
+    {}
+    
+    Result(Err<ErrT> value)
+    :variant(std::move(value))
+    {}
+    
+    bool is_ok() const {
+        return std::holds_alternative<Ok<Unit>>(variant);
+    }
+    bool is_err() const {
+        return std::holds_alternative<Err<ErrT>>(variant);
+    }
+
+    Unit ok_value() const {
+        return Unit{}; 
+    }
+    ErrT err_value() const{
+        return std::get<Err<ErrT>>(variant).copy_value();
+    }
+    
+    Unit&& take_ok_value() {
+        return Unit{};
+    }
+    ErrT&& take_err_value() {
+        return std::get<Err<ErrT>>(variant).take_value();
+    }
+};
+
 
 class VectorStore {
 private:
     std::vector<std::pair<uint64_t, Vector>> m_vectors;
 
 public:
-    Result<void, std::runtime_error> insert(std::uint64_t id, const Vector& vector) {
+    Result<Unit, std::runtime_error> insert(std::uint64_t id, const Vector& vector) {
         auto dims_valid{[&]() {
             return m_vectors[0].second.data.size() == vector.data.size();
         }};
@@ -75,7 +149,7 @@ public:
         throw std::runtime_error("Dimensions mismatch.");
     }
 
-    Result<void, std::runtime_error> remove(std::uint64_t id) {
+    Result<Unit, std::runtime_error> remove(std::uint64_t id) {
         auto find_id{[&id](std::pair<std::uint64_t, Vector>& a) {
             return a.first == id;
         }};
