@@ -11,4 +11,6 @@ Hence that was a design issue.
 So for runtime dispatch i would use switch statements.
 [when-is-virtual-dispatch-faster-than-function-templates-in-c-runtime](https://stackoverflow.com/questions/79219324/when-is-virtual-dispatch-faster-than-function-templates-in-c-runtime)
 
+5. std::from_chars very strealined value extraction from text files. (https://learnmoderncpp.com/2021/01/22/migrating-towards-from_chars/)
+
 
