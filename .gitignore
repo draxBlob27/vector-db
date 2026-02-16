@@ -3,4 +3,4 @@
 */build/*
 .DS_Store
 tessstt.cpp
-glove_100d_2024.txt
+*.txt

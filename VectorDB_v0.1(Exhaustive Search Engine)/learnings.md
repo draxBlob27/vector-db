@@ -14,3 +14,4 @@ So for runtime dispatch i would use switch statements.
 5. std::from_chars very strealined value extraction from text files. (https://learnmoderncpp.com/2021/01/22/migrating-towards-from_chars/)
 
 
+6. Although my goal for current implementation was just correctness, but using find -> O(n) lookup for id exists was very slow for 1.2M vectors so bascially it was O(n^2) and i would take me hours to even insert GLoVE in my VectorStore. So i shifted to using hashing. And it was able to load dataset in 18 secs.

@@ -67,26 +67,26 @@ std::ostream& operator<<(std::ostream& out, const DBError& err) {
 }
 
 Result<Unit, DBError> VectorStore::insert(std::uint64_t id, Vector&& i_vector) { //need to handle Id already exists
+    auto [it, inserted] = m_id_set.insert(id);
+    if (!inserted) {
+        return Err<DBError>(DBError::IdAlreadyPresent);
+    }
+
     auto dims_valid{[&]() {
         return m_vectors[0].second.data.size() == i_vector.data.size();
     }};
-
-    auto find_id{[&id](std::pair<std::uint64_t, Vector>& a) {
-        return a.first == id;
-    }};
-
-    if (!m_vectors.empty() && std::ranges::find_if(m_vectors, find_id) != m_vectors.end()) {
-        return Err<DBError>(DBError::IdAlreadyPresent);
-    }
 
     if (m_vectors.empty() || dims_valid()) {
         i_vector.compute_norm(); //normalise at insgestion
 
         m_vectors.push_back({id, std::move(i_vector)}); //used move because it could be(i think..) wil see later on).
         return Ok<Unit>(Unit{});
+    } else {
+        m_id_set.erase(id);
+
+        return Err<DBError>(DBError::DimensionError);
     }
 
-    return Err<DBError>(DBError::DimensionError);
 }
 
 Result<Unit, DBError> VectorStore::remove(std::uint64_t id) {
@@ -104,7 +104,7 @@ Result<Unit, DBError> VectorStore::remove(std::uint64_t id) {
     return Ok<Unit>(Unit{});
 }   
 
-Result<std::vector<std::pair<std::uint64_t, float>>, DBError> VectorStore::query(const Vector& q_vector, std::uint64_t k, Metric metric) {//very large object is getting created, can think of move semantics
+Result<std::vector<std::pair<std::uint64_t, float>>, DBError> VectorStore::query(Vector&& q_vector, std::uint64_t k, Metric metric) {//very large object is getting created, can think of move semantics
     //very high chances of using quick select, just saw LC soln today(12 feb, 2026) regarding this
     //saying quick select is best in terms of TC ~ O(n) for best k kinda things
     if (m_vectors.empty()) {
@@ -112,6 +112,8 @@ Result<std::vector<std::pair<std::uint64_t, float>>, DBError> VectorStore::query
     }
 
     std::vector<std::pair<std::uint64_t, float>> res(std::min(static_cast<uint64_t>(k), m_vectors.size())); //handles if DB size is less than k.
+
+    q_vector.compute_norm();
 
     switch (metric)
     {

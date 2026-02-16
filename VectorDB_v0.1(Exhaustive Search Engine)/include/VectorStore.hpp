@@ -5,6 +5,7 @@
 #include <string>
 #include <stdexcept>
 #include <algorithm>
+#include <unordered_set>
 #include <functional>
 #include <cmath>
 #include <fstream>
@@ -146,6 +147,12 @@ struct Vector {
     float norm_data{0.0f};
     bool normalized{false};
 
+    Vector() = default;
+
+    Vector(std::vector<float> vals) {
+        data = std::move(vals);
+    }
+
     float norm() const {
         return norm_data;
     }
@@ -171,6 +178,7 @@ struct Info {
 class VectorStore {
 private:
     std::vector<std::pair<uint64_t, Vector>> m_vectors;
+    std::unordered_set<std::uint64_t> m_id_set;
     static const inline std::uint32_t s_magic_bytes{0x56454344};
     static const inline std::uint32_t s_version{1};
 
@@ -179,7 +187,21 @@ public:
 
     Result<Unit, DBError> remove(std::uint64_t id);
 
-    Result<std::vector<std::pair<std::uint64_t, float>>, DBError> query(const Vector& q_vector, std::uint64_t k = 10, Metric metric = Metric::Cosine);
+    Result<std::vector<float>, DBError> get(std::uint64_t id) {
+        if (m_id_set.count(id)) {
+            for (const auto it : m_vectors) {
+                if (it.first == id) {
+                    return Ok{it.second.data};
+                }
+            }
+        } else {
+            return Err<DBError>{DBError::IdNotFoundError};
+        }
+
+        return Err<DBError>{DBError::DataBaseEmptyError};
+    }
+
+    Result<std::vector<std::pair<std::uint64_t, float>>, DBError> query(Vector&& q_vector, std::uint64_t k = 10, Metric metric = Metric::Cosine);
 
     Result<Unit, DBError> save(const std::string& filename);
 
