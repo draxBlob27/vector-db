@@ -36,6 +36,36 @@ float calc_distance<Metric::L2>(const Vector& a, const Vector& b) {
     return distance;
 }
 
+std::ostream& operator<<(std::ostream& out, const DBError& err) {
+    switch (err) {
+        case DBError::MetricError:
+            out << "MetricError";
+            break;
+        case DBError::DimensionError:
+            out << "DimensionError";
+            break;
+        case DBError::IdNotFoundError:
+            out << "IdNotFoundError";
+            break;
+        case DBError::ZeroNormError:
+            out << "ZeroNormError";
+            break;
+        case DBError::DataBaseEmptyError:
+            out << "DataBaseEmptyError";
+            break;
+        case DBError::FileCorrupted:
+            out << "FileCorrupted";
+            break;
+        case DBError::IdAlreadyPresent:
+            out << "IdAlreadyPresent";
+            break;
+        default:
+            out << "Unknown DBError";
+            break;
+    }
+    return out;
+}
+
 Result<Unit, DBError> VectorStore::insert(std::uint64_t id, Vector&& i_vector) { //need to handle Id already exists
     auto dims_valid{[&]() {
         return m_vectors[0].second.data.size() == i_vector.data.size();
@@ -74,20 +104,20 @@ Result<Unit, DBError> VectorStore::remove(std::uint64_t id) {
     return Ok<Unit>(Unit{});
 }   
 
-Result<std::vector<std::pair<std::uint64_t, float>>, DBError> VectorStore::query(const Vector& q_vector, std::uint64_t k = 10, Metric metric = Metric::Cosine) {//very large object is getting created, can think of move semantics
+Result<std::vector<std::pair<std::uint64_t, float>>, DBError> VectorStore::query(const Vector& q_vector, std::uint64_t k, Metric metric) {//very large object is getting created, can think of move semantics
     //very high chances of using quick select, just saw LC soln today(12 feb, 2026) regarding this
     //saying quick select is best in terms of TC ~ O(n) for best k kinda things
     if (m_vectors.empty()) {
         return Err<DBError>{DBError::DataBaseEmptyError};
     }
 
-    std::vector<std::pair<std::uint64_t, float>> res(std::min(static_cast<uint64_t>(k), size())); //handles if DB size is less than k.
+    std::vector<std::pair<std::uint64_t, float>> res(std::min(static_cast<uint64_t>(k), m_vectors.size())); //handles if DB size is less than k.
 
     switch (metric)
     {
     case(Metric::L2): {
         std::priority_queue<std::pair<float, std::uint64_t>> pq;
-        int i{res.size() - 1};
+        std::size_t i{res.size() - 1};
         
         if (m_vectors[0].second.data.size() != q_vector.data.size()) { //no need for each data point check because these are already verified at insertion.
             return Err<DBError>{DBError::DimensionError};
@@ -115,7 +145,7 @@ Result<std::vector<std::pair<std::uint64_t, float>>, DBError> VectorStore::query
     }
     case(Metric::DotProduct): {
         std::priority_queue<std::pair<float, std::uint64_t>, std::vector<std::pair<float, std::uint64_t>>, std::greater<>> pq;
-        int i{res.size() - 1};
+        std::size_t i{res.size() - 1};
         
         if (m_vectors[0].second.data.size() != q_vector.data.size()) { //no need for each data point check because these are already verified at insertion.
             return Err<DBError>{DBError::DimensionError};
@@ -143,7 +173,7 @@ Result<std::vector<std::pair<std::uint64_t, float>>, DBError> VectorStore::query
     }
     case (Metric::Cosine): {
         std::priority_queue<std::pair<float, std::uint64_t>, std::vector<std::pair<float, std::uint64_t>>, std::greater<>> pq;
-        int i{res.size() - 1};
+        std::size_t i{res.size() - 1};
         
         Vector copied_q_vector{q_vector};
         copied_q_vector.compute_norm(); //perform normailzation of query vector

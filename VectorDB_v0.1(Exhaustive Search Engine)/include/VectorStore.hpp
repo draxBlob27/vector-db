@@ -1,9 +1,12 @@
+#ifndef VECTORDB_HPP
+#define VECTORDB_HPP
 #include <cstdint>
 #include <ios>
 #include <string>
 #include <stdexcept>
 #include <algorithm>
 #include <functional>
+#include <cmath>
 #include <fstream>
 #include <unordered_map>
 #include <variant>
@@ -23,36 +26,6 @@ enum class DBError : std::int32_t {
     FileCorrupted = (-6),
     IdAlreadyPresent = (-7)
 };
-
-std::ostream& operator<<(std::ostream& out, const DBError& err) {
-    switch (err) {
-        case DBError::MetricError:
-            out << "MetricError";
-            break;
-        case DBError::DimensionError:
-            out << "DimensionError";
-            break;
-        case DBError::IdNotFoundError:
-            out << "IdNotFoundError";
-            break;
-        case DBError::ZeroNormError:
-            out << "ZeroNormError";
-            break;
-        case DBError::DataBaseEmptyError:
-            out << "DataBaseEmptyError";
-            break;
-        case DBError::FileCorrupted:
-            out << "FileCorrupted";
-            break;
-        case DBError::IdAlreadyPresent:
-            out << "IdAlreadyPresent";
-            break;
-        default:
-            out << "Unknown DBError";
-            break;
-    }
-    return out;
-}
 
 
 enum class Metric {
@@ -189,6 +162,12 @@ struct Vector {
     };
 };
 
+struct Info {
+    std::uint64_t size;
+    std::uint64_t dims;
+    std::uint64_t bytes;
+};
+
 class VectorStore {
 private:
     std::vector<std::pair<uint64_t, Vector>> m_vectors;
@@ -206,15 +185,32 @@ public:
 
     Result<Unit, DBError> load(const std::string& filename);
 
-    std::uint64_t size() {
-        return (m_vectors.size() * (dimensions() + 3) * sizeof(float)) + sizeof(s_magic_bytes) + sizeof(s_version);
-    }
-
-    std::uint64_t dimensions() {
+    Result<std::uint64_t, DBError> size() {
         if (m_vectors.empty()) {
-            return 0;
+            return Err<DBError>{DBError::DataBaseEmptyError};
         }
 
-        return m_vectors[0].second.data.size();
+        return Ok{m_vectors.size()};
+    }
+
+    Result<Info, DBError> info() {
+        if (m_vectors.empty()) {
+            return Err<DBError>{DBError::DataBaseEmptyError};
+        }
+
+        return Ok{Info{
+            size().ok_value(),
+            dimensions().ok_value(),
+            (size().ok_value() * (dimensions().ok_value() + 3) * sizeof(float)) + sizeof(s_magic_bytes) + sizeof(s_version)
+        }};
+    }
+
+    Result<std::uint64_t, DBError> dimensions() {
+        if (m_vectors.empty()) {
+            return Err<DBError>{DBError::DataBaseEmptyError};
+        }
+
+        return Ok{m_vectors[0].second.data.size()};
     }
 };
+#endif
