@@ -7,110 +7,132 @@
 
 class VectorStore_test : public ::testing::Test {
 protected: 
-    VectorStore vdb{};
-    std::string filename{"/home/sp27022003/vector-db/glove_100d_2024.txt"};
-    Myres mr;
-    
-    void SetUp() override {
-        auto result = Importer::import_glove(filename, vdb);
-        ASSERT_TRUE(result.is_ok()) << "Failed to import glove file";
-        mr = result.ok_value();
+    inline static VectorStore glove;
+    inline static VectorStore sift;
+    inline static const std::string glove_filename{"/home/sp27022003/vector-db/glove_100d_2024.txt"};
+    inline static const std::string sift_data{"/home/sp27022003/vector-db/sift/sift_base.fvecs"};
+    inline static const std::string sift_query{"/home/sp27022003/vector-db/sift/sift_query.fvecs"};
+    inline static const std::string sift_truth{"/home/sp27022003/vector-db/sift/sift_groundtruth.ivecs"};
+    inline static GloveRes glove_res;
+    inline static SiftRes sift_res;
+
+    static void SetUpTestSuite() {
+        auto res_a = Importer::import_glove(glove_filename, glove);
+        ASSERT_TRUE(res_a.is_ok());
+        glove_res = res_a.ok_value();
+
+        auto res_b = Importer::import_sift1m(sift_data, sift_query, sift_truth, sift);
+        ASSERT_TRUE(res_b.is_ok());
+        sift_res = res_b.ok_value();
     }
 };
 
 TEST_F(VectorStore_test, Correct_Import) {
-    auto dims = vdb.dimensions();
-    ASSERT_TRUE(dims.is_ok());
-    ASSERT_EQ(dims.ok_value(), 100);
+    auto glove_dims = glove.dimensions();
+    ASSERT_TRUE(glove_dims.is_ok());
+    ASSERT_EQ(glove_dims.ok_value(), 100);
+
+    auto sift_dims = sift.dimensions();
+    ASSERT_TRUE(sift_dims.is_ok());
+    ASSERT_EQ(sift_dims.ok_value(), 128);
 }
 
 TEST_F(VectorStore_test, Similarity_Test_1) {      
-    std::vector<float> king = (vdb.get(mr.word_to_id["king"])).ok_value();
-    std::vector<float> man = (vdb.get(mr.word_to_id["man"])).ok_value();
-    std::vector<float> woman = (vdb.get(mr.word_to_id["woman"])).ok_value();
+    std::vector<float> king = (glove.get(glove_res.word_to_id["king"])).ok_value();
+    std::vector<float> man = (glove.get(glove_res.word_to_id["man"])).ok_value();
+    std::vector<float> woman = (glove.get(glove_res.word_to_id["woman"])).ok_value();
 
     std::vector<float> query(100);
     for (std::size_t i{0}; i < king.size(); i++) {
         query[i] = king[i] - man[i] + woman[i];
     }
 
-    auto res = vdb.query(query);
+    auto res = glove.query(query, 10, Metric::L2);
     ASSERT_TRUE(res.is_ok());
     for (auto it : res.ok_value()) {
         std::cout << "Id: " << it.first << '\n';
-        std::cout << "Word: " << mr.id_to_word[it.first] << '\n';
+        std::cout << "Word: " << glove_res.id_to_word[it.first] << '\n';
         std::cout << "Score: " << it.second << '\n';
     }
 }
-TEST_F(VectorStore_test, Similarity_Test_2) {      
-    std::vector<float> king = (vdb.get(mr.word_to_id["paris"])).ok_value();
-    std::vector<float> man = (vdb.get(mr.word_to_id["france"])).ok_value();
-    std::vector<float> woman = (vdb.get(mr.word_to_id["germany"])).ok_value();
 
-    std::vector<float> query(100);
-    for (std::size_t i{0}; i < king.size(); i++) {
-        query[i] = king[i] - man[i] + woman[i];
-    }
+TEST_F(VectorStore_test, Result_match_1) {
+    auto res = sift.query(sift_res.queries[0], sift_res.truth_k[0] , Metric::L2);
 
-    auto res = vdb.query(query);
     ASSERT_TRUE(res.is_ok());
-    for (auto it : res.ok_value()) {
-        std::cout << "Id: " << it.first << '\n';
-        std::cout << "Word: " << mr.id_to_word[it.first] << '\n';
-        std::cout << "Score: " << it.second << '\n';
+    for (std::size_t i{0}; i < res.ok_value().size(); i++) {
+        ASSERT_EQ(sift_res.truths[0][i], res.ok_value()[i].first);
     }
 }
-TEST_F(VectorStore_test, Similarity_Test_3) {      
-    std::vector<float> king = (vdb.get(mr.word_to_id["brother"])).ok_value();
-    std::vector<float> man = (vdb.get(mr.word_to_id["man"])).ok_value();
-    std::vector<float> woman = (vdb.get(mr.word_to_id["woman"])).ok_value();
+// TEST_F(VectorStore_test, Similarity_Test_2) {      
+//     std::vector<float> king = (glove.get(glove_res.word_to_id["paris"])).ok_value();
+//     std::vector<float> man = (glove.get(glove_res.word_to_id["france"])).ok_value();
+//     std::vector<float> woman = (glove.get(glove_res.word_to_id["germany"])).ok_value();
 
-    std::vector<float> query(100);
-    for (std::size_t i{0}; i < king.size(); i++) {
-        query[i] = king[i] - man[i] + woman[i];
-    }
+//     std::vector<float> query(100);
+//     for (std::size_t i{0}; i < king.size(); i++) {
+//         query[i] = king[i] - man[i] + woman[i];
+//     }
 
-    auto res = vdb.query(query);
-    ASSERT_TRUE(res.is_ok());
-    for (auto it : res.ok_value()) {
-        std::cout << "Id: " << it.first << '\n';
-        std::cout << "Word: " << mr.id_to_word[it.first] << '\n';
-        std::cout << "Score: " << it.second << '\n';
-    }
-}
-TEST_F(VectorStore_test, Similarity_Test_4) {      
-    std::vector<float> king = (vdb.get(mr.word_to_id["walking"])).ok_value();
-    std::vector<float> man = (vdb.get(mr.word_to_id["walk"])).ok_value();
-    std::vector<float> woman = (vdb.get(mr.word_to_id["swim"])).ok_value();
+//     auto res = glove.query(query, 10, Metric::L2);
+//     ASSERT_TRUE(res.is_ok());
+//     for (auto it : res.ok_value()) {
+//         std::cout << "Id: " << it.first << '\n';
+//         std::cout << "Word: " << glove_res.id_to_word[it.first] << '\n';
+//         std::cout << "Score: " << it.second << '\n';
+//     }
+// }
+// TEST_F(VectorStore_test, Similarity_Test_3) {      
+//     std::vector<float> king = (glove.get(glove_res.word_to_id["brother"])).ok_value();
+//     std::vector<float> man = (glove.get(glove_res.word_to_id["man"])).ok_value();
+//     std::vector<float> woman = (glove.get(glove_res.word_to_id["woman"])).ok_value();
 
-    std::vector<float> query(100);
-    for (std::size_t i{0}; i < king.size(); i++) {
-        query[i] = king[i] - man[i] + woman[i];
-    }
+//     std::vector<float> query(100);
+//     for (std::size_t i{0}; i < king.size(); i++) {
+//         query[i] = king[i] - man[i] + woman[i];
+//     }
 
-    auto res = vdb.query(query);
-    ASSERT_TRUE(res.is_ok());
-    for (auto it : res.ok_value()) {
-        std::cout << "Id: " << it.first << '\n';
-        std::cout << "Word: " << mr.id_to_word[it.first] << '\n';
-        std::cout << "Score: " << it.second << '\n';
-    }
-}
-TEST_F(VectorStore_test, Similarity_Test_5) {      
-    std::vector<float> king = (vdb.get(mr.word_to_id["biggest"])).ok_value();
-    std::vector<float> man = (vdb.get(mr.word_to_id["big"])).ok_value();
-    std::vector<float> woman = (vdb.get(mr.word_to_id["small"])).ok_value();
+//     auto res = glove.query(query, 10, Metric::L2);
+//     ASSERT_TRUE(res.is_ok());
+//     for (auto it : res.ok_value()) {
+//         std::cout << "Id: " << it.first << '\n';
+//         std::cout << "Word: " << glove_res.id_to_word[it.first] << '\n';
+//         std::cout << "Score: " << it.second << '\n';
+//     }
+// }
+// TEST_F(VectorStore_test, Similarity_Test_4) {      
+//     std::vector<float> king = (glove.get(glove_res.word_to_id["walking"])).ok_value();
+//     std::vector<float> man = (glove.get(glove_res.word_to_id["walk"])).ok_value();
+//     std::vector<float> woman = (glove.get(glove_res.word_to_id["swim"])).ok_value();
 
-    std::vector<float> query(100);
-    for (std::size_t i{0}; i < king.size(); i++) {
-        query[i] = king[i] - man[i] + woman[i];
-    }
+//     std::vector<float> query(100);
+//     for (std::size_t i{0}; i < king.size(); i++) {
+//         query[i] = king[i] - man[i] + woman[i];
+//     }
 
-    auto res = vdb.query(query);
-    ASSERT_TRUE(res.is_ok());
-    for (auto it : res.ok_value()) {
-        std::cout << "Id: " << it.first << '\n';
-        std::cout << "Word: " << mr.id_to_word[it.first] << '\n';
-        std::cout << "Score: " << it.second << '\n';
-    }
-}
+//     auto res = glove.query(query, 10, Metric::L2);
+//     ASSERT_TRUE(res.is_ok());
+//     for (auto it : res.ok_value()) {
+//         std::cout << "Id: " << it.first << '\n';
+//         std::cout << "Word: " << glove_res.id_to_word[it.first] << '\n';
+//         std::cout << "Score: " << it.second << '\n';
+//     }
+// }
+// TEST_F(VectorStore_test, Similarity_Test_5) {      
+//     std::vector<float> king = (glove.get(glove_res.word_to_id["biggest"])).ok_value();
+//     std::vector<float> man = (glove.get(glove_res.word_to_id["big"])).ok_value();
+//     std::vector<float> woman = (glove.get(glove_res.word_to_id["small"])).ok_value();
+
+//     std::vector<float> query(100);
+//     for (std::size_t i{0}; i < king.size(); i++) {
+//         query[i] = king[i] - man[i] + woman[i];
+//     }
+
+//     auto res = glove.query(query, 10, Metric::L2);
+//     ASSERT_TRUE(res.is_ok());
+//     for (auto it : res.ok_value()) {
+//         std::cout << "Id: " << it.first << '\n';
+//         std::cout << "Word: " << glove_res.id_to_word[it.first] << '\n';
+//         std::cout << "Score: " << it.second << '\n';
+//     }
+// }
