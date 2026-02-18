@@ -2,8 +2,8 @@
 #include <unordered_map>
 #include <string>
 #include <iostream>
-#include <VectorStore.hpp>
-#include <Importer.hpp>
+#include "VectorStore.hpp"
+#include "Importer.hpp"
 
 class VectorStore_test : public ::testing::Test {
 protected: 
@@ -57,11 +57,25 @@ TEST_F(VectorStore_test, Similarity_Test_1) {
 }
 
 TEST_F(VectorStore_test, Result_match_1) {
-    auto res = sift.query(sift_res.queries[0], sift_res.truth_k[0] , Metric::L2);
+    std::size_t num_queries = sift_res.queries.size();
 
-    ASSERT_TRUE(res.is_ok());
-    for (std::size_t i{0}; i < res.ok_value().size(); i++) {
-        ASSERT_EQ(sift_res.truths[0][i], res.ok_value()[i].first);
+    std::cout << num_queries << '\n';
+
+    for (std::size_t cnt = 0; cnt < num_queries; cnt++) {
+        auto res = sift.query(sift_res.queries[cnt], sift_res.truth_k[cnt] , Metric::L2);
+        EXPECT_TRUE(res.is_ok());
+
+        std::unordered_set<std::uint32_t> truth_ids;
+        for (auto it : sift_res.truths[cnt]) {
+            truth_ids.insert(it);
+        }
+    
+        std::uint32_t match{0};
+        for (std::size_t i{0}; i < res.ok_value().size(); i++) {
+            match += truth_ids.count(res.ok_value()[i].first);
+        }
+
+        EXPECT_GE(static_cast<double>(match) / sift_res.truth_k[cnt], 0.99) << "Query no: " << cnt << '\n';
     }
 }
 // TEST_F(VectorStore_test, Similarity_Test_2) {      

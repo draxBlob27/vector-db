@@ -1,0 +1,6 @@
+MsPQ for 10000 vectors : 0.886481 Milliseconds
+QPS for 10000 vectors : 1128 queries
+MsPQ for 100000 vectors : 8.45689 Milliseconds
+QPS for 100000 vectors : 118 queries
+MsPQ for 1000000 vectors : 83.7884 Milliseconds
+QPS for 1000000 vectors : 11 queries

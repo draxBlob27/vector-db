@@ -19,3 +19,4 @@ target_sources(VectorStore_lib
 )
 
 add_subdirectory(test)
+add_subdirectory(bench)

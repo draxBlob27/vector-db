@@ -6,7 +6,7 @@
 #include <ios>
 #include <charconv>
 #include <unordered_map>
-#include <VectorStore.hpp>
+#include "VectorStore.hpp"
 
 enum class ImporterError : std::int32_t {
     GLoVEFileNotFound = (-1),
@@ -86,7 +86,7 @@ public:
         return Ok{mr};
     }
 
-    static Result<SiftRes, ImporterError> import_sift1m(const std::string& data_file, const std::string& query_file, const std::string& truth_file, VectorStore& vdb) {
+    static Result<SiftRes, ImporterError> import_sift1m(const std::string& data_file, const std::string& query_file, const std::string& truth_file, VectorStore& vdb, std::uint32_t k_imports = -1) {
         SiftRes mr;
 
         std::ifstream inf{}; 
@@ -118,8 +118,9 @@ public:
             }
 
             vdb.insert(cnt++, std::move(emb));
+            k_imports--;
 
-            if (inf.peek() == EOF) {
+            if (inf.peek() == EOF || !k_imports) {
                 break;
             }
         }

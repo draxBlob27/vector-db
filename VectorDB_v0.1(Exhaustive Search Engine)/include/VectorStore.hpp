@@ -187,7 +187,7 @@ public:
 
     Result<Unit, DBError> remove(std::uint64_t id);
 
-    Result<std::vector<float>, DBError> get(std::uint64_t id) {
+    Result<std::vector<float>, DBError> get(std::uint64_t id) const {
         if (m_id_set.count(id)) {
             for (const auto it : m_vectors) {
                 if (it.first == id) {
@@ -201,13 +201,13 @@ public:
         return Err<DBError>{DBError::DataBaseEmptyError};
     }
 
-    Result<std::vector<std::pair<std::uint64_t, float>>, DBError> query(Vector&& q_vector, std::uint64_t k = 10, Metric metric = Metric::Cosine);
+    Result<std::vector<std::pair<std::uint64_t, float>>, DBError> query (Vector&& q_vector, std::uint64_t k = 10, Metric metric = Metric::Cosine) const;
 
-    Result<Unit, DBError> save(const std::string& filename);
+    Result<Unit, DBError> save(const std::string& filename) const;
 
     Result<Unit, DBError> load(const std::string& filename);
 
-    Result<std::uint64_t, DBError> size() {
+    Result<std::uint64_t, DBError> size() const {
         if (m_vectors.empty()) {
             return Err<DBError>{DBError::DataBaseEmptyError};
         }
@@ -215,7 +215,7 @@ public:
         return Ok{m_vectors.size()};
     }
 
-    Result<Info, DBError> info() {
+    Result<Info, DBError> info() const {
         if (m_vectors.empty()) {
             return Err<DBError>{DBError::DataBaseEmptyError};
         }
@@ -227,7 +227,7 @@ public:
         }};
     }
 
-    Result<std::uint64_t, DBError> dimensions() {
+    Result<std::uint64_t, DBError> dimensions() const {
         if (m_vectors.empty()) {
             return Err<DBError>{DBError::DataBaseEmptyError};
         }

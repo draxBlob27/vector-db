@@ -104,7 +104,7 @@ Result<Unit, DBError> VectorStore::remove(std::uint64_t id) {
     return Ok<Unit>(Unit{});
 }   
 
-Result<std::vector<std::pair<std::uint64_t, float>>, DBError> VectorStore::query(Vector&& q_vector, std::uint64_t k, Metric metric) {//very large object is getting created, can think of move semantics
+Result<std::vector<std::pair<std::uint64_t, float>>, DBError> VectorStore::query(Vector&& q_vector, std::uint64_t k, Metric metric) const {//very large object is getting created, can think of move semantics
     //very high chances of using quick select, just saw LC soln today(12 feb, 2026) regarding this
     //saying quick select is best in terms of TC ~ O(n) for best k kinda things
     if (m_vectors.empty()) {
@@ -218,7 +218,7 @@ Result<std::vector<std::pair<std::uint64_t, float>>, DBError> VectorStore::query
     return Ok(res);
 }
 
-Result<Unit, DBError> VectorStore::save(const std::string& filename) {
+Result<Unit, DBError> VectorStore::save(const std::string& filename) const {
     // std::uint32_t crc_32_header{0xFFFFFFFF};
     const std::uint64_t count{m_vectors.size()};
     if (!count) {

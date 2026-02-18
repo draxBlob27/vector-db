@@ -67,3 +67,6 @@ Score: 28.3897
 [  PASSED  ] 3 tests.
 sp27022003@sanil-cpp-2026:~/vector-db/VectorDB_v0.1(Exhaustive Search Engine)/build$ 
 ```
+
+9. TODO -> QPS for glove
+10. ``` cmake -DCMAKE_BUILD_TYPE=Release .. ```
