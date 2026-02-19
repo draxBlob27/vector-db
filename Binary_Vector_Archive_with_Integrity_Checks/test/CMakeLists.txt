@@ -14,6 +14,3 @@ target_include_directories(archive_lib
         ../include/vectorDB 
 )
 
-# target_compile_options(myArchive)
-target_include_directories(myArchive PRIVATE ${GTEST_INCLUDE_DIRS}/include)
-
