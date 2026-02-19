@@ -1,40 +1,7 @@
 #include <cmath>
 #include <queue>
 #include "VectorStore.hpp"
-
-template<Metric M>
-float calc_distance(const Vector& a, const Vector& b);
-
-template<>
-float calc_distance<Metric::Cosine>(const Vector& a, const Vector& b) {
-    float distance{0.0f};
-    for (int i{0}; i < a.data.size(); i++) {
-        distance += (a.data[i] * b.data[i]);
-    }
-
-    distance /= (a.norm() * b.norm());
-    return distance;
-}
-
-template<>
-float calc_distance<Metric::DotProduct>(const Vector& a, const Vector& b) {
-    float distance{0.0f};
-    for (int i{0}; i < a.data.size(); i++) {
-        distance += (a.data[i] * b.data[i]);
-    }
-
-    return distance;
-}
-
-template<>
-float calc_distance<Metric::L2>(const Vector& a, const Vector& b) {
-    float distance{0.0f};
-    for (int i{0}; i < a.data.size(); i++) {
-        distance += ((a.data[i] - b.data[i]) * (a.data[i] - b.data[i]));
-    }
-
-    return distance;
-}
+#include "distances.hpp"
 
 std::ostream& operator<<(std::ostream& out, const DBError& err) {
     switch (err) {
@@ -59,6 +26,9 @@ std::ostream& operator<<(std::ostream& out, const DBError& err) {
         case DBError::IdAlreadyPresent:
             out << "IdAlreadyPresent";
             break;
+        case DBError::FileNotFound:
+            out << "FileNotFound\n";
+            break;
         default:
             out << "Unknown DBError";
             break;
@@ -66,7 +36,7 @@ std::ostream& operator<<(std::ostream& out, const DBError& err) {
     return out;
 }
 
-Result<Unit, DBError> VectorStore::insert(std::uint64_t id, Vector&& i_vector) { //need to handle Id already exists
+Result<Unit, DBError> VectorStore::insert(std::uint64_t id, Vector i_vector) { //need to handle Id already exists, here my DB is going to own input_vector, hence rref makes sense, but pass by value is equally good. Because, internal calls are passed by rvalue hence, move semantics(2 moves), and explicit call by user, does 1 copy + 1 move, and user calls are limited to very less. If want to keep rref, user has to pass rvalue, otherwise compile error(no defn of func).
     auto [it, inserted] = m_id_set.insert(id);
     if (!inserted) {
         return Err<DBError>(DBError::IdAlreadyPresent);
@@ -86,7 +56,6 @@ Result<Unit, DBError> VectorStore::insert(std::uint64_t id, Vector&& i_vector) {
 
         return Err<DBError>(DBError::DimensionError);
     }
-
 }
 
 Result<Unit, DBError> VectorStore::remove(std::uint64_t id) {
@@ -104,7 +73,19 @@ Result<Unit, DBError> VectorStore::remove(std::uint64_t id) {
     return Ok<Unit>(Unit{});
 }   
 
-Result<std::vector<std::pair<std::uint64_t, float>>, DBError> VectorStore::query(Vector&& q_vector, std::uint64_t k, Metric metric) const {//very large object is getting created, can think of move semantics
+Result<std::vector<float>, DBError> VectorStore::get(std::uint64_t id) const {
+    if (m_id_set.count(id)) {
+        for (const auto it : m_vectors) {
+            if (it.first == id) {
+                return Ok<std::vector<float>>{it.second.data};
+            }
+        }
+    }
+
+    return Err<DBError>{DBError::IdNotFoundError};
+}
+
+Result<std::vector<std::pair<std::uint64_t, float>>, DBError> VectorStore::query(const Vector& q_vector, std::uint64_t k, Metric metric) const {//very large object is getting created, can think of move semantics
     //very high chances of using quick select, just saw LC soln today(12 feb, 2026) regarding this
     //saying quick select is best in terms of TC ~ O(n) for best k kinda things
     if (m_vectors.empty()) {
@@ -113,7 +94,17 @@ Result<std::vector<std::pair<std::uint64_t, float>>, DBError> VectorStore::query
 
     std::vector<std::pair<std::uint64_t, float>> res(std::min(static_cast<uint64_t>(k), m_vectors.size())); //handles if DB size is less than k.
 
-    q_vector.compute_norm();
+    auto compute_q_norm{[&]() {
+        float norm_data = 0.0f;
+
+        for (const auto& it : q_vector.data) {
+            norm_data += (it * it);
+        }
+
+        return norm_data;
+    }};
+
+    float q_norm = compute_q_norm();
 
     switch (metric)
     {
@@ -218,6 +209,7 @@ Result<std::vector<std::pair<std::uint64_t, float>>, DBError> VectorStore::query
     return Ok(res);
 }
 
+
 Result<Unit, DBError> VectorStore::save(const std::string& filename) const {
     // std::uint32_t crc_32_header{0xFFFFFFFF};
     const std::uint64_t count{m_vectors.size()};
@@ -228,33 +220,33 @@ Result<Unit, DBError> VectorStore::save(const std::string& filename) const {
 
     const std::uint32_t dimension{static_cast<std::uint32_t>(m_vectors[0].second.data.size())};
     if (!dimension) {
-        return Err<DBError>{DBError::DataBaseEmptyError};
+        return Err<DBError>{DBError::DimensionError};
         // throw InvalidOperationError("Empty vectors.");
     }
     
     std::ofstream outf{filename, std::ios::binary};
     if (!outf) {
-        return Err<DBError>{DBError::DataBaseEmptyError};
+        return Err<DBError>{DBError::FileNotFound};
         // throw FileNotFoundError("Uh oh, file: " + file_path + " could not be opened for writing!\n");
     }
     
-    outf.write(reinterpret_cast<const char*>(&VectorStore::VectorStore::s_magic_bytes), sizeof(VectorStore::VectorStore::s_magic_bytes));
+    outf.write(reinterpret_cast<const char*>(&VectorStore::s_magic_bytes), sizeof(VectorStore::s_magic_bytes));
     if (outf.bad() || outf.fail()) {
-        return Err<DBError>{DBError::DataBaseEmptyError};
+        return Err<DBError>{DBError::FileCorrupted};
         // throw InsufficientSpaceError("Insufficient space on disk.");
     }
     // update_crc(crc_32_header, &VectorStore::s_magic_bytes, sizeof(VectorStore::s_magic_bytes));
     
-    outf.write(reinterpret_cast<const char *>(&VectorStore::VectorStore::s_version), sizeof(VectorStore::VectorStore::s_version));
+    outf.write(reinterpret_cast<const char *>(&VectorStore::s_version), sizeof(VectorStore::s_version));
     if (outf.bad() || outf.fail()) {
-        return Err<DBError>{DBError::DataBaseEmptyError};
+        return Err<DBError>{DBError::FileCorrupted};
         // throw InsufficientSpaceError("Insufficient space on disk.");
     }
     // update_crc(crc_32_header, &VectorStore::s_version, sizeof(VectorStore::s_version));
 
     outf.write(reinterpret_cast<const char *>(&dimension), sizeof(dimension));
     if (outf.bad() || outf.fail()) {
-        return Err<DBError>{DBError::DataBaseEmptyError};
+        return Err<DBError>{DBError::FileCorrupted};
         // throw InsufficientSpaceError("Insufficient space on disk.");
     }
     // update_crc(crc_32_header, &dimension, sizeof(dimension));
@@ -276,14 +268,14 @@ Result<Unit, DBError> VectorStore::save(const std::string& filename) const {
     for (std::uint64_t i{0}; i < count; i++)
     {
         if (dimension != m_vectors[i].second.data.size()) {
-            return Err<DBError>{DBError::DataBaseEmptyError};
+            return Err<DBError>{DBError::DimensionError};
             // throw InvalidOperationError("Dimension of data mismatch.");
         }
         
         //write id to disk.
         outf.write(reinterpret_cast<const char *>(&m_vectors[i].first), sizeof(std::uint64_t));
         if (outf.bad() || outf.fail()) {
-            return Err<DBError>{DBError::DataBaseEmptyError};
+            return Err<DBError>{DBError::FileCorrupted};
             // throw InsufficientSpaceError("Insufficient space on disk.");
         }
         // update_crc
@@ -298,7 +290,7 @@ Result<Unit, DBError> VectorStore::save(const std::string& filename) const {
         //write norm val to disk
         outf.write(reinterpret_cast<const char*>(&m_vectors[i].second.norm_data), sizeof(m_vectors[i].second.norm_data));
         if (outf.bad() || outf.fail()) {
-            return Err<DBError>{DBError::DataBaseEmptyError};
+            return Err<DBError>{DBError::FileCorrupted};
             // throw InsufficientSpaceError("Insufficient space on disk.");
         }
         // update_crc

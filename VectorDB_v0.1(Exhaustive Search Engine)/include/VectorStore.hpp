@@ -25,9 +25,11 @@ enum class DBError : std::int32_t {
     ZeroNormError = (-4),
     DataBaseEmptyError = (-5),
     FileCorrupted = (-6),
-    IdAlreadyPresent = (-7)
+    IdAlreadyPresent = (-7),
+    FileNotFound = (-8)
 };
 
+std::ostream& operator<<(std::ostream& out, const DBError& err);
 
 enum class Metric {
     L2, //smaller is better
@@ -183,25 +185,13 @@ private:
     static const inline std::uint32_t s_version{1};
 
 public:
-    Result<Unit, DBError> insert(std::uint64_t id, Vector&& i_vector);
+    Result<Unit, DBError> insert(std::uint64_t id, Vector i_vector);
 
     Result<Unit, DBError> remove(std::uint64_t id);
 
-    Result<std::vector<float>, DBError> get(std::uint64_t id) const {
-        if (m_id_set.count(id)) {
-            for (const auto it : m_vectors) {
-                if (it.first == id) {
-                    return Ok{it.second.data};
-                }
-            }
-        } else {
-            return Err<DBError>{DBError::IdNotFoundError};
-        }
+    Result<std::vector<float>, DBError> get(std::uint64_t id) const;
 
-        return Err<DBError>{DBError::DataBaseEmptyError};
-    }
-
-    Result<std::vector<std::pair<std::uint64_t, float>>, DBError> query (Vector&& q_vector, std::uint64_t k = 10, Metric metric = Metric::Cosine) const;
+    Result<std::vector<std::pair<std::uint64_t, float>>, DBError> query (const Vector& q_vector, std::uint64_t k = 10, Metric metric = Metric::Cosine) const ;
 
     Result<Unit, DBError> save(const std::string& filename) const;
 
