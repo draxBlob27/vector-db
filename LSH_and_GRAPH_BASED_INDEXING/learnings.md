@@ -1,0 +1,5 @@
+1. [Visual LSH](https://randorithms.com/2019/09/19/Visual-LSH.html)
+2. [Locality Sensitive Hashing (LSH): The Illustrated Guide](https://www.pinecone.io/learn/series/faiss/locality-sensitive-hashing/)
+3. [Random Projection for Locality Sensitive Hashing](https://www.pinecone.io/learn/series/faiss/locality-sensitive-hashing-random-projection/)
+4. [Sparse Implementation](https://github.com/pinecone-io/examples/tree/main/learn/search/faiss-ebook/locality-sensitive-hashing-traditional)
+5. [Random Projections](https://github.com/pinecone-io/examples/tree/main/learn/search/faiss-ebook/locality-sensitive-hashing-random-projection)
