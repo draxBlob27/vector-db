@@ -13,6 +13,7 @@
 #include <variant>
 #include <vector>
 #include "Vector.hpp"
+#include "Metric.hpp"
 
 //TODO -> code is still redundant, can use lamdas to fix, Will se later on.
 //TODO -> apply buffer in writing, using struct types to handle {id, vector of float}, could also use byte buffer which cares only take bytes into acounnt.
@@ -29,12 +30,6 @@ enum class DBError : std::int32_t {
 };
 
 std::ostream& operator<<(std::ostream& out, const DBError& err);
-
-enum class Metric {
-    L2, //smaller is better
-    Cosine, //larger is better
-    DotProduct //larger is better
-}; 
 
 template <typename T>
 class Ok {

@@ -19,6 +19,9 @@ struct Vector {
     }
 
     void compute_norm() {
+        if (normalized)
+            return;
+            
         norm_data = 0.0f;
 
         for (const auto& it : data) {

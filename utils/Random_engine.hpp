@@ -23,7 +23,7 @@ namespace Random {
     template <typename T>
 	T get(T min, T max)
 	{
-		return std::uniform_int_distribution<T>{min, max}(mt);
+		return std::normal_distribution<T>{min, max}(mt);
 	}
 
     template <typename R, typename S, typename T>

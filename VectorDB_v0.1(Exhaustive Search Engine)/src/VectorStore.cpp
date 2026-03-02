@@ -92,7 +92,7 @@ Result<std::vector<std::pair<std::uint64_t, float>>, DBError> VectorStore::query
         return Err<DBError>{DBError::DataBaseEmptyError};
     }
 
-    std::vector<std::pair<std::uint64_t, float>> res(std::min(static_cast<uint64_t>(k), m_vectors.size())); //handles if DB size is less than k.
+    std::vector<std::pair<std::uint64_t, float>> res(std::min(static_cast<std::size_t>(k), m_vectors.size())); //handles if DB size is less than k.
 
     auto compute_q_norm{[&]() {
         float norm_data = 0.0f;
