@@ -12,10 +12,9 @@
 #include <unordered_map>
 #include <variant>
 #include <vector>
+#include "Vector.hpp"
 
-//TODO -> handle diff k values.
 //TODO -> code is still redundant, can use lamdas to fix, Will se later on.
-//TODO -> handle unique id, also to handle remove_if by find_if, using the fact that id is unique.
 //TODO -> apply buffer in writing, using struct types to handle {id, vector of float}, could also use byte buffer which cares only take bytes into acounnt.
 //TODO -> Add reserve() for bulk loading
 enum class DBError : std::int32_t {
@@ -144,33 +143,6 @@ class Result<Unit, ErrT> {
     }
 };
 
-struct Vector {
-    std::vector<float> data;
-    float norm_data{0.0f};
-    bool normalized{false};
-
-    Vector() = default;
-
-    Vector(std::vector<float> vals) {
-        data = std::move(vals);
-    }
-
-    float norm() const {
-        return norm_data;
-    }
-
-    void compute_norm() {
-        norm_data = 0.0f;
-
-        for (const auto& it : data) {
-            norm_data += (it * it);
-        }
-
-        norm_data = std::sqrt(norm_data);
-        normalized = true;
-    };
-};
-
 struct Info {
     std::uint64_t size;
     std::uint64_t dims;
@@ -202,7 +174,7 @@ public:
             return Err<DBError>{DBError::DataBaseEmptyError};
         }
 
-        return Ok{m_vectors.size()};
+        return Ok{static_cast<std::uint64_t>(m_vectors.size())};
     }
 
     Result<Info, DBError> info() const {
@@ -222,7 +194,7 @@ public:
             return Err<DBError>{DBError::DataBaseEmptyError};
         }
 
-        return Ok{m_vectors[0].second.data.size()};
+        return Ok{static_cast<std::uint64_t>(m_vectors[0].second.data.size())};
     }
 };
 #endif
