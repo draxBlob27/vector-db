@@ -31,5 +31,9 @@ struct Vector {
         norm_data = std::sqrt(norm_data);
         normalized = true;
     };
+
+    std::size_t size() const {
+        return data.size();
+    }
 };
 #endif //VECTOR_HPP

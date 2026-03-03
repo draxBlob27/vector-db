@@ -1,11 +1,11 @@
-#ifndef ARCHIVE_H
-#define ARCHIVE_H
+#ifndef ARCHIVE_HPP
+#define ARCHIVE_HPP
 #include <iostream>
 #include <ios>
 #include <vector>
 #include <fstream>
 #include <cstdint>
-#include "errors.h"
+#include "errors.hpp"
 
 class VectorArchive
 {
@@ -80,4 +80,4 @@ public:
     void append(const std::string& file_path, const std::vector<std::vector<double>>& data);
     friend std::ostream& operator<<(std::ostream& out, const VectorArchive::FileInfo& f);
 };
-#endif
+#endif //ARCHIVE_HPP

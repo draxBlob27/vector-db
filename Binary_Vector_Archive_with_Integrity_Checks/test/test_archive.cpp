@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <random>
 #include <cstdint>
-#include "archive.h"
+#include "archive.hpp"
 #include <iostream>
 
 std::vector<std::vector<double>> generateData(const int dim, const int count, bool isZero=0)

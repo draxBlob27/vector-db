@@ -1,5 +1,5 @@
 #include <cstdint>
-#include "archive.h"
+#include "archive.hpp"
 
 void VectorArchive::save(const std::string &file_path, const std::vector<std::vector<double>> &data)
 {

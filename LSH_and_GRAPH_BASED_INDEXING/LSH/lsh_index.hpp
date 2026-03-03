@@ -2,13 +2,21 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <queue>
+#include <fstream>
+#include <string>
 #include "Vector.hpp"
 #include "distances.hpp"
+#include "errors.hpp"
 #include "Random_engine.hpp"
 
 class LSHIndex {
     private:
+        static const inline std::uint32_t s_magic_bytes{0x4c5348}; //LSH
+        static const inline std::uint32_t s_version{1};
+
         std::vector<std::pair<std::uint64_t, Vector>> m_vectors;
+        std::uint32_t m_dimension;
+        std::uint64_t m_count;
         std::vector<std::unordered_map<std::uint64_t, std::vector<std::size_t>>> m_hash_tables;
         std::vector<std::vector<Vector>> m_hyperplanes;
         std::uint32_t m_num_tables, m_num_projections;
@@ -32,6 +40,32 @@ class LSHIndex {
             return hash;
         }
 
+        void stream_valid(const std::string& e_msg, std::ofstream& outf) { //cannot pass string view as exceptions need to own error message to keep them alive while stack unfolding
+            if (outf.bad() || outf.fail()) {
+                throw InsufficientSpaceError(e_msg);
+            }
+        };
+
+        template <typename T>
+        void stream_write(const T& data, const std::string& e_msg, std::ofstream& outf) {
+            outf.write(reinterpret_cast<const char*>(&data), sizeof(data));
+            stream_valid(e_msg, outf);
+        }
+
+        template <typename T>
+        void stream_write(const std::vector<T>& data, const std::string& e_msg, std::ofstream& outf) {
+            unsigned const char* d_ptr{reinterpret_cast<unsigned const char*>(&data[0])};
+            outf.write(reinterpret_cast<const char*>(d_ptr), data.size() * sizeof(T));
+            stream_valid(e_msg, outf);
+        }
+
+        void stream_write(const std::vector<Vector>& data, const std::string& e_msg, std::ofstream& outf) {
+            for (const auto& emb : data) {
+                using namespace std::string_literals;
+                stream_write(emb.data, "Insufficient space on disk"s, outf);
+            }
+        }
+
     public:
         LSHIndex(const std::uint32_t& num_tables, const std::uint32_t& num_projections)
             :m_num_tables{num_tables}, m_num_projections{num_projections}
@@ -40,14 +74,16 @@ class LSHIndex {
             m_hyperplanes.resize(m_num_tables, std::vector<Vector>(m_num_projections));
         }
 
-        void build(std::vector<Vector> vectors) {
-            std::size_t dims{vectors.front().data.size()};//will implement error handling later on
+        void build(std::vector<Vector> vectors)
+        {
+            m_dimension = vectors.front().data.size();//will implement error handling later on
+            m_count = vectors.size(); //total count of data points
 
             for (std::uint32_t i{0}; i < m_num_tables; i++) { 
                 std::vector<Vector>& t_hyperplanes{m_hyperplanes[i]}; //this table hyplerplanes
                 for (std::uint32_t j{0}; j < m_num_projections; j++) { //for each table(independent) we have this many projectstions
-                    std::vector<float> normal(dims); //create hyperplances in higher dim space
-                    for (std::size_t k{0}; k < dims; k++) {
+                    std::vector<float> normal(m_dimension); //create hyperplances in higher dim space
+                    for (std::size_t k{0}; k < m_dimension; k++) {
                         normal[k] = Random::get(-0.05f, 0.05f); //hyperplanes wrt origin
                     }
 
@@ -97,7 +133,7 @@ class LSHIndex {
                 for (std::uint32_t i{0}; i < m_num_tables; i++) {
                     std::uint64_t hash = hash_vals[i];
 
-                    hash ^= (1ULL << j);
+                    hash ^= (1ULL << j); //flipping 1 bit in case we dont have enogh matching vectos
 
                     auto got = m_hash_tables[i].find(hash);
                     if (got != m_hash_tables[i].end()) {
@@ -134,12 +170,57 @@ class LSHIndex {
             }
             
             std::reverse(res.begin(), res.end());
-
+            
             return res;
         }
-
+        
         void save(const std::string& filename) {
+            /*
+                |----------------------------------------------|
+                | Magic number and version (LSH1)              |
+                | Tuning parameters                            |
+                | Data shapes - dimensionality and total count |
+                | Table 0 -- projections                       |
+                | Table 1 -- projections                       |
+                | ...                                          |
+                | Table 0 -- no of active hashes.              |
+                | Table 0 -- hash -- no of ids -- ids          |
+                | ...                                          |
+                | m_vectors - id,Vector                        |
+                |----------------------------------------------|
+            */
 
+            std::ofstream outf("LSH_and_GRAPH_BASED_INDEXING/LSH/persist" + filename, std::ios::binary);
+            if (!outf) {
+                throw FileNotFoundError("Uh oh, file: " + filename + " could not be opened for writing!\n");
+            }
+            
+            using namespace std::string_literals;
+            stream_write(LSHIndex::s_magic_bytes, "Insufficient space on disk"s, outf);
+            stream_write(LSHIndex::s_version, "Insufficient space on disk"s, outf);
+
+            stream_write(m_num_tables, "Insufficient space on disk"s, outf);
+            stream_write(m_num_projections, "Insufficient space on disk"s, outf);
+            stream_write(m_dimension, "Insufficient space on disk"s, outf);
+            stream_write(m_count, "Insufficient space on disk"s, outf);
+
+            for (const auto& planes : m_hyperplanes) {
+                stream_write(planes, "Insufficient space on disk"s, outf); //template specialization
+            }
+
+            for (const auto& table : m_hash_tables) {
+                stream_write(table.size(), "Insufficient space on disk"s, outf); //how many active hash for this table
+                for (const auto& [hash, ids] : table) {
+                    stream_write(hash, "Insufficient space on disk"s, outf); //hash_val of current hash
+                    stream_write(ids.size(), "Insufficient space on disk"s, outf); //no of vectors in this buccket
+                    stream_write(ids, "Insufficient space on disk"s, outf); //there ids
+                }
+            }
+
+            for (const auto& vec : m_vectors) {
+                stream_write(vec.first, "Insufficient space on disk"s, outf);
+                stream_write(vec.second.data, "Insufficient space on disk"s, outf);
+            }
         }
 
         void load(const std::string& filename) {
