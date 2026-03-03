@@ -1,3 +1,6 @@
+#ifndef LSH_INDEX_HPP
+#define LSH_INDEX_HPP
+
 #include <vector>
 #include <unordered_map>
 #include <unordered_set>
@@ -8,6 +11,18 @@
 #include "distances.hpp"
 #include "errors.hpp"
 #include "Random_engine.hpp"
+
+struct index_info {
+    std::size_t candidate_set_size;
+    int bitflips;
+    std::vector<std::pair<std::uint64_t, std::uint64_t>> collided_ids;
+
+    void reset() {
+        candidate_set_size = 0;
+        bitflips = 0;
+        collided_ids.clear();
+    }
+};
 
 class LSHIndex {
     private:
@@ -20,6 +35,8 @@ class LSHIndex {
         std::vector<std::unordered_map<std::uint64_t, std::vector<std::size_t>>> m_hash_tables;
         std::vector<std::vector<Vector>> m_hyperplanes;
         std::uint32_t m_num_tables, m_num_projections;
+
+        index_info info;
 
         //function for finding hash val for each table with random projections --- 101010100011 like this
         std::uint64_t hash_val(const Vector& a, const std::vector<Vector>& planes) {
@@ -46,6 +63,19 @@ class LSHIndex {
             }
         };
 
+        void stream_valid(const std::string& e_msg, std::ifstream& inf) { //cannot pass string view as exceptions need to own error message to keep them alive while stack unfolding
+            if (inf.bad() || inf.fail()) {
+                throw CorruptedDataError(e_msg);
+            }
+        };
+
+        template <typename T>
+        void corruption_check(const T& a, const T& b) {
+            if (a != b) {
+                throw CorruptedDataError("Data Corrupted\n");
+            }
+        }
+
         template <typename T>
         void stream_write(const T& data, const std::string& e_msg, std::ofstream& outf) {
             outf.write(reinterpret_cast<const char*>(&data), sizeof(data));
@@ -53,16 +83,42 @@ class LSHIndex {
         }
 
         template <typename T>
+        void stream_read(T& var, const std::string& e_msg, std::ifstream& inf) {
+            inf.read(reinterpret_cast<char*>(&var), sizeof(var));
+            stream_valid(e_msg, inf);
+        }
+
+        void stream_read(Vector& var, const std::string& e_msg, std::ifstream& inf) {
+            var.data.resize(m_dimension);
+            inf.read(reinterpret_cast<char*>(&var.data[0]), m_dimension * sizeof(float));
+            stream_valid(e_msg, inf);
+        }
+        
+        template <typename T>
+        void stream_read(std::vector<T>& vec, const std::string& e_msg, std::ifstream& inf) {
+            inf.read(reinterpret_cast<char *>(&vec[0]), vec.size() * sizeof(T));
+            stream_valid(e_msg, inf);
+        }
+
+        template <typename T>
         void stream_write(const std::vector<T>& data, const std::string& e_msg, std::ofstream& outf) {
+            if (data.empty()) {
+                throw InvalidOperationError("Empty Data passed on\n");
+            }
             unsigned const char* d_ptr{reinterpret_cast<unsigned const char*>(&data[0])};
             outf.write(reinterpret_cast<const char*>(d_ptr), data.size() * sizeof(T));
             stream_valid(e_msg, outf);
         }
 
         void stream_write(const std::vector<Vector>& data, const std::string& e_msg, std::ofstream& outf) {
+            if (data.empty()) {
+                throw InvalidOperationError("Empty Data passed on\n");
+            }
+
             for (const auto& emb : data) {
                 using namespace std::string_literals;
                 stream_write(emb.data, "Insufficient space on disk"s, outf);
+                stream_valid(e_msg, outf);
             }
         }
 
@@ -108,6 +164,9 @@ class LSHIndex {
         }
 
         std::vector<std::pair<std::uint64_t, float>> query(const Vector& query, const std::uint32_t& k) {
+            info.reset();
+            info.collided_ids.resize(m_num_tables);
+
             std::unordered_set<std::size_t> st;
 
             Vector copied_query{query};
@@ -118,13 +177,23 @@ class LSHIndex {
             for (std::size_t i{0}; i < m_num_tables; i++) {
                 std::vector<Vector>& t_hyperplanes{m_hyperplanes[i]}; //this table hyplerplanes
                 std::uint64_t hash = hash_val(copied_query, t_hyperplanes);
-                hash_vals[i] =  hash;//hash val of query 
+                hash_vals[i] =  hash;//hash val of query with this hyperplane
                 
                 auto got = m_hash_tables[i].find(hash);
+                int cnt{0};
                 if (got != m_hash_tables[i].end()) {
                     for (const auto& it : got->second) { //extracting collided vectors with same hash val
-                        st.insert(it); //de-duplicating
+                        auto [_, inserted] = st.insert(it); //de-duplicating
+                        if (inserted) {
+                            cnt++;
+                        }
                     }
+                }
+
+                if (cnt) {
+                    info.collided_ids[i] = {hash, cnt};
+                } else {
+                    info.collided_ids[i] = {-1, -1};
                 }
             }
 
@@ -144,7 +213,10 @@ class LSHIndex {
                 }
 
                 j++;
+                info.bitflips++;
             }
+
+            info.candidate_set_size = st.size();
 
             std::priority_queue<std::pair<float, uint64_t>, std::vector<std::pair<float, std::uint64_t>>, std::greater<>> pq; //min heap
 
@@ -190,7 +262,7 @@ class LSHIndex {
                 |----------------------------------------------|
             */
 
-            std::ofstream outf("LSH_and_GRAPH_BASED_INDEXING/LSH/persist" + filename, std::ios::binary);
+            std::ofstream outf("LSH_and_GRAPH_BASED_INDEXING/LSH/persist/" + filename, std::ios::binary);
             if (!outf) {
                 throw FileNotFoundError("Uh oh, file: " + filename + " could not be opened for writing!\n");
             }
@@ -224,6 +296,79 @@ class LSHIndex {
         }
 
         void load(const std::string& filename) {
+            std::ifstream inf("LSH_and_GRAPH_BASED_INDEXING/LSH/persist/" + filename, std::ios::binary);
+            if (!inf) {
+                throw FileNotFoundError("Uh oh, file: " + filename + " could not be opened for reading!\n");
+            }
             
+            using namespace std::string_literals;
+            std::uint32_t magic_bytes, version;
+
+
+            stream_read(magic_bytes, "File corrupted\n"s, inf);
+            corruption_check(magic_bytes, s_magic_bytes);
+
+            stream_read(version, "File corrupted\n"s, inf);
+            corruption_check(version, s_version);
+
+            stream_read(m_num_tables, "File corrupted\n"s, inf);
+            stream_read(m_num_projections, "File corrupted\n"s, inf);
+            stream_read(m_dimension, "File corrupted\n"s, inf);
+            stream_read(m_count, "File corrupted\n"s, inf);
+
+            m_hash_tables.resize(m_num_tables);
+            m_hyperplanes.resize(m_num_tables, std::vector<Vector>(m_num_projections));
+
+            for (std::size_t i{0}; i < m_num_tables; i++) {
+                for (std::size_t j{0}; j < m_num_projections; j++) {
+                    stream_read(m_hyperplanes[i][j], "File corrupted\n"s, inf);
+                }
+            }
+
+            for (std::size_t i{0}; i < m_num_tables; i++) {
+                std::size_t active_hashes;
+                stream_read(active_hashes, "File corrupted\n"s, inf);
+                m_hash_tables[i].reserve(active_hashes);
+
+                for (std::size_t j{0}; j < active_hashes; j++) {
+                    std::uint64_t hash;
+                    stream_read(hash, "File corrupted\n"s, inf);
+    
+                    std::size_t collisions;
+                    stream_read(collisions, "File corrupted\n"s, inf);
+    
+                    m_hash_tables[i][hash].resize(collisions);
+                    stream_read(m_hash_tables[i][hash], "File corrupted\n"s, inf);
+                }
+            }
+
+            m_vectors.resize(m_count);
+
+            for (std::size_t i{0}; i < m_count; i++) {
+                std::uint64_t id;
+                Vector v;
+
+                stream_read(id, "File corrupted\n"s, inf);
+                stream_read(v, "File corrupted\n"s, inf);
+
+                m_vectors[i] = {id, std::move(v)};
+            }
+        }
+
+        void reset() {
+            m_vectors.clear();
+            m_dimension = 0;
+            m_count = 0;
+            m_hash_tables.clear();
+            m_hyperplanes.clear();
+            m_num_tables = 0, m_num_projections = 0;
+
+            info.reset();
+        }
+
+        const index_info& getInfo() const {
+            return info;
         }
 };
+
+#endif //LSH_INDEX_HPP
