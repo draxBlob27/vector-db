@@ -7,7 +7,7 @@
 #include <charconv>
 #include <unordered_map>
 #include "VectorStore.hpp"
-#include "LSH_index.hpp"
+#include "LSH_Index.hpp"
 
 enum class ImporterError : std::int32_t {
     GLoVEFileNotFound = (-1),

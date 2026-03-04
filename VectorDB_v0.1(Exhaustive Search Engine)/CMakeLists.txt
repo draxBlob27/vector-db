@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(VectorDB)
+project(VectorDB_exhaustive)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -13,7 +13,9 @@ target_sources(VectorStore_lib
     PUBLIC
         FILE_SET HEADERS
         BASE_DIRS
-            include
+            "include"
+            "../utils"
+            "../LSH_and_GRAPH_BASED_INDEXING/LSH/include"
         FILES
             include/VectorStore.hpp
 )

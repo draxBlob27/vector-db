@@ -5,7 +5,7 @@
 #include <iostream>
 #include <cstdint>
 #include <chrono>
-#include "archive.h"
+#include "archive.hpp"
 
 class Timer {
 private:

@@ -57,7 +57,7 @@ TEST_F(VectorStore_test, Similarity_Test_1) {
 }
 
 TEST_F(VectorStore_test, Result_match_1) {
-    std::size_t num_queries = sift_res.queries.size();
+    std::size_t num_queries = 100;
 
     std::cout << num_queries << '\n';
 

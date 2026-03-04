@@ -13,10 +13,10 @@ target_sources(archive_lib
     PUBLIC
         FILE_SET HEADERS
         BASE_DIRS
-            include
+            "include"
+            "../utils"
         FILES
-            include/vectorDB/archive.h
-            include/vectorDB/errors.h
+            include/archive.hpp
 )
 
 
