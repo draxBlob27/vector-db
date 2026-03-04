@@ -1,6 +1,7 @@
 #ifndef VECTOR_HPP
 #define VECTOR_HPP
 #include <vector>
+#include <iostream>
 #include <cmath>
 
 struct Vector {
@@ -19,10 +20,13 @@ struct Vector {
     }
 
     void compute_norm() {
-        if (normalized)
+        if (normalized) {
+            // std::cout << "Not computing\n";
             return;
+        }
             
         norm_data = 0.0f;
+        // std::cout << "Computing\n";
 
         for (const auto& it : data) {
             norm_data += (it * it);

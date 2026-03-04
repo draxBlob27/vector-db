@@ -1,5 +1,12 @@
 #include "LSH_Index.hpp"
 
+std::ostream& operator<<(std::ostream& out, const index_info& inf) {
+    // out << "Bitflips: " << inf.bitflips << '\n';
+    // out << "Candidate" << inf.candidate_set_size << '\n';
+    out << "Index size: " << inf.index_size;
+    return out;
+}
+
 std::uint64_t LSHIndex::hash_val(const Vector& a, const std::vector<Vector>& planes) {
                 
     std::uint64_t hash{0};
@@ -84,18 +91,17 @@ void LSHIndex::stream_write(const std::vector<Vector>& data, const std::string& 
     }
 }
 
-void LSHIndex::build(std::vector<Vector> vectors)
+void LSHIndex::build(std::vector<std::pair<std::uint64_t, Vector>> vectors)
 {
-    m_dimension = vectors.front().data.size();//will implement error handling later on
+    m_dimension = vectors.front().second.size();//will implement error handling later on
     m_count = vectors.size(); //total count of data points
-    info.index_size = m_count;
 
     for (std::uint32_t i{0}; i < m_num_tables; i++) { 
         std::vector<Vector>& t_hyperplanes{m_hyperplanes[i]}; //this table hyplerplanes
         for (std::uint32_t j{0}; j < m_num_projections; j++) { //for each table(independent) we have this many projectstions
             std::vector<float> normal(m_dimension); //create hyperplances in higher dim space
             for (std::size_t k{0}; k < m_dimension; k++) {
-                normal[k] = Random::get(-0.05f, 0.05f); //hyperplanes wrt origin
+                normal[k] = Random::get<float>(-0.0f, 1.0f); //hyperplanes wrt origin
             }
 
             t_hyperplanes[j] = Vector(normal);
@@ -104,7 +110,8 @@ void LSHIndex::build(std::vector<Vector> vectors)
     
     m_vectors.resize(vectors.size());
     for (std::size_t emb_cnt{0}; emb_cnt < vectors.size(); emb_cnt++) {
-        m_vectors[emb_cnt] = {emb_cnt, std::move(vectors[emb_cnt])};
+        m_vectors[emb_cnt] = std::move(vectors[emb_cnt]);
+        m_vectors[emb_cnt].second.compute_norm();
         const Vector& emb = m_vectors[emb_cnt].second;
 
         for (std::uint32_t i{0}; i < m_num_tables; i++) {
@@ -121,8 +128,10 @@ void LSHIndex::build(std::vector<Vector> vectors)
 std::vector<std::pair<std::uint64_t, float>> LSHIndex::query(const Vector& query, const std::uint32_t& k) {
     info.reset();
     info.collided_ids.resize(m_num_tables);
+    info.index_size = m_count;
 
-    std::unordered_set<std::size_t> st;
+    // std::unordered_set<std::size_t> st;
+    std::vector<std::size_t> st;
 
     Vector copied_query{query};
     copied_query.compute_norm(); //perform normailzation of query vector
@@ -138,38 +147,43 @@ std::vector<std::pair<std::uint64_t, float>> LSHIndex::query(const Vector& query
         int cnt{0};
         if (got != m_hash_tables[i].end()) {
             for (const auto& it : got->second) { //extracting collided vectors with same hash val
-                auto [_, inserted] = st.insert(it); //de-duplicating
-                if (inserted) {
-                    cnt++;
-                }
+                // auto [_, inserted] = st.insert(it); //de-duplicating
+                // if (inserted) {
+                //     cnt++;
+                // }
+                st.push_back(it);
             }
         }
 
-        if (cnt) {
-            info.collided_ids[i] = {hash, cnt};
-        } else {
-            info.collided_ids[i] = {-1, -1};
-        }
+        // if (cnt) {
+        //     info.collided_ids[i] = {hash, cnt};
+        // } else {
+        //     info.collided_ids[i] = {-1, -1};
+        // }
     }
 
-    int j{0};
-    while (st.size() < k && j < m_num_projections) {
-        for (std::uint32_t i{0}; i < m_num_tables; i++) {
-            std::uint64_t hash = hash_vals[i];
+    std::ranges::sort(st);
+    auto it = std::ranges::unique(st);
+    st.erase(it.begin(), it.end());
 
-            hash ^= (1ULL << j); //flipping 1 bit in case we dont have enogh matching vectos
+    // int j{0};
+    // while (st.size() < k && j < m_num_projections) {
+    //     for (std::uint32_t i{0}; i < m_num_tables; i++) {
+    //         std::uint64_t hash = hash_vals[i];
 
-            auto got = m_hash_tables[i].find(hash);
-            if (got != m_hash_tables[i].end()) {
-                for (const auto& it : got->second) { //extracting collided vectors with same hash val
-                    st.insert(it); //de-duplicating
-                }
-            } 
-        }
+    //         hash ^= (1ULL << j); //flipping 1 bit in case we dont have enogh matching vectos
 
-        j++;
-        info.bitflips++;
-    }
+    //         auto got = m_hash_tables[i].find(hash);
+    //         if (got != m_hash_tables[i].end()) {
+    //             for (const auto& it : got->second) { //extracting collided vectors with same hash val
+    //                 st.insert(it); //de-duplicating
+    //             }
+    //         } 
+    //     }
+
+    //     j++;
+    //     info.bitflips++;
+    // }
 
     info.candidate_set_size = st.size();
 

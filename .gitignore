@@ -6,3 +6,4 @@ tessstt.cpp
 *.txt
 sift
 *.gz
+.venv

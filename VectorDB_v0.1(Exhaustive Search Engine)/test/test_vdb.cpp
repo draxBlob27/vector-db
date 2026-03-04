@@ -17,13 +17,19 @@ protected:
     inline static SiftRes sift_res;
 
     static void SetUpTestSuite() {
-        auto res_a = Importer::import_glove(glove_filename, glove);
+        auto res_a = Importer::import_glove(glove_filename);
         ASSERT_TRUE(res_a.is_ok());
         glove_res = res_a.ok_value();
+        for (std::size_t i{0}; i < glove_res.vectors.size(); i++) {
+            glove.insert(glove_res.ids[i], glove_res.vectors[i]);
+        }
 
-        auto res_b = Importer::import_sift1m(sift_data, sift_query, sift_truth, sift);
+        auto res_b = Importer::import_sift1m(sift_data, sift_query, sift_truth);
         ASSERT_TRUE(res_b.is_ok());
         sift_res = res_b.ok_value();
+        for (std::size_t i{0}; i < sift_res.vectors.size(); i++) {
+            sift.insert(sift_res.ids[i], sift_res.vectors[i]);
+        }
     }
 };
 

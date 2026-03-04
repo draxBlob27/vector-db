@@ -18,18 +18,22 @@ enum class ImporterError : std::int32_t {
 struct GloveRes {
     std::unordered_map<std::string, std::uint64_t> word_to_id;
     std::unordered_map<std::uint64_t, std::string> id_to_word;
+    std::vector<Vector> vectors;
+    std::vector<std::uint64_t> ids;
 };
 
 struct SiftRes {
     std::vector<std::vector<float>> queries;
     std::vector<std::vector<std::uint32_t>> truths;
     std::vector<std::uint32_t> truth_k;
+    std::vector<Vector> vectors;
+    std::vector<std::uint64_t> ids;
 };
 
 class Importer {
 public:
     //can take dimensions from caller
-    static Result<GloveRes, ImporterError> import_glove(const std::string& filename, VectorStore& vdb) {
+    static Result<GloveRes, ImporterError> import_glove(const std::string& filename) {
         GloveRes mr;
         // mr.id_to_word.reserve(1'200'000);
         // mr.word_to_id.reserve(1'200'000);
@@ -77,7 +81,8 @@ public:
                 mr.word_to_id.emplace(word, id);
                 mr.id_to_word.emplace(id, word);
 
-                vdb.insert(id, std::move(emb));
+                mr.vectors.push_back(std::move(emb));
+                mr.ids.push_back(id);
                 id++;
             }
 
@@ -87,7 +92,7 @@ public:
         return Ok{mr};
     }
 
-    static Result<SiftRes, ImporterError> import_sift1m(const std::string& data_file, const std::string& query_file, const std::string& truth_file, VectorStore& vdb, std::uint32_t k_imports = -1) {
+    static Result<SiftRes, ImporterError> import_sift1m(const std::string& data_file, const std::string& query_file, const std::string& truth_file, std::uint32_t k_imports = -1) {
         SiftRes mr;
 
         std::ifstream inf{}; 
@@ -118,125 +123,15 @@ public:
                 return Err{ImporterError::SIFT1MFileCorrupted};
             }
 
-            vdb.insert(cnt++, std::move(emb));
+            mr.vectors.push_back(std::move(emb));
+            mr.ids.push_back(cnt);
+            cnt++;
             k_imports--;
 
             if (inf.peek() == EOF || !k_imports) {
                 break;
             }
         }
-
-        inf.close();
-
-
-        //now reading query file
-        inf.open(query_file, std::ios::binary);
-        if (!inf) {
-            std::cerr << "Uh oh! " + query_file + " Could not be opened";
-            return Err<ImporterError>{ImporterError::SIFT1MFilenotFound};
-        }
-
-        while (!inf.eof()) {
-            inf.read(reinterpret_cast<char*>(&dims), 4);
-            if (inf.bad() || inf.fail()) {
-                return Err{ImporterError::SIFT1MFileCorrupted};
-            }
-
-            if (dims != 128) {
-                return Err{ImporterError::SIFT1MFileCorrupted};
-            }
-
-            std::vector<float> q(dims);
-            unsigned char* d_ptr = reinterpret_cast<unsigned char*>(&q[0]);
-            inf.read(reinterpret_cast<char*>(d_ptr), 4 * dims);
-            if (inf.bad() || inf.fail()) {
-                return Err{ImporterError::SIFT1MFileCorrupted};
-            }
-
-            mr.queries.push_back(q);
-            if (inf.peek() == EOF) {
-                break;
-            }
-        }
-
-        inf.close();
-
-        //now reading truth file
-        inf.open(truth_file, std::ios::binary);
-        if (!inf) {
-            std::cerr << "Uh oh! " + truth_file + " Could not be opened";
-            return Err<ImporterError>{ImporterError::SIFT1MFilenotFound};
-        }
-
-        std::uint32_t k;
-        
-        while (!inf.eof()) {
-            inf.read(reinterpret_cast<char*>(&k), 4);
-            if (inf.bad() || inf.fail()) {
-                return Err{ImporterError::SIFT1MFileCorrupted};
-            }
-
-            std::vector<std::uint32_t> t(k);
-            unsigned char* d_ptr = reinterpret_cast<unsigned char*>(&t[0]);
-            inf.read(reinterpret_cast<char*>(d_ptr), 4 * k);
-            if (inf.bad() || inf.fail()) {
-                return Err{ImporterError::SIFT1MFileCorrupted};
-            }
-
-            mr.truths.push_back(t);
-            mr.truth_k.push_back(k);
-
-            if (inf.peek() == EOF) {
-                break;
-            }
-        }
-
-        inf.close();
-
-        return Ok{mr};
-    }
-
-    static Result<SiftRes, ImporterError> import_sift1m(const std::string& data_file, const std::string& query_file, const std::string& truth_file, LSHIndex& lsh, std::uint32_t k_imports = -1) {
-        SiftRes mr;
-
-        std::ifstream inf{}; 
-
-        inf.open(data_file, std::ios::binary);
-        if (!inf) {
-            std::cerr << "Uh oh! " + data_file + " Could not be opened";
-            return Err<ImporterError>{ImporterError::SIFT1MFilenotFound};
-        }
-
-        std::uint32_t dims;
-        std::uint64_t cnt{0};
-        std::vector<Vector> data;
-
-        while (!inf.eof()) {
-            inf.read(reinterpret_cast<char*>(&dims), 4);
-            if (inf.bad() || inf.fail()) {
-                return Err{ImporterError::SIFT1MFileCorrupted};
-            }
-
-            if (dims != 128) {
-                return Err{ImporterError::SIFT1MFileCorrupted};
-            }
-
-            std::vector<float> emb(dims);
-            unsigned char* d_ptr = reinterpret_cast<unsigned char*>(&emb[0]);
-            inf.read(reinterpret_cast<char*>(d_ptr), 4 * dims);
-            if (inf.bad() || inf.fail()) {
-                return Err{ImporterError::SIFT1MFileCorrupted};
-            }
-
-            data.push_back(std::move(Vector(emb)));
-            k_imports--;
-
-            if (inf.peek() == EOF || !k_imports) {
-                break;
-            }
-        }
-
-        lsh.build(data);
 
         inf.close();
 

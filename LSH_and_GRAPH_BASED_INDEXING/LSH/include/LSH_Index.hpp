@@ -27,6 +27,8 @@ struct index_info {
     }
 };
 
+std::ostream& operator<<(std::ostream& out, const index_info& inf);
+
 class LSHIndex {
     private:
         static const inline std::uint32_t s_magic_bytes{0x4c5348}; //LSH
@@ -75,7 +77,7 @@ class LSHIndex {
             m_hyperplanes.resize(m_num_tables, std::vector<Vector>(m_num_projections));
         }
 
-        void build(std::vector<Vector> vectors);
+        void build(std::vector<std::pair<std::uint64_t, Vector>> vectors);
 
         std::vector<std::pair<std::uint64_t, float>> query(const Vector& query, const std::uint32_t& k);
         //returns vector of k size, with {id, score} in descending order
