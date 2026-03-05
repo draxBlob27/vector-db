@@ -2,58 +2,79 @@
 #include <fstream>
 #include "VectorStore.hpp"
 #include "Importer.hpp"
-
-class Timer {
-    using millisec = std::chrono::duration<double, std::ratio<1, 1000>>;
-
-    using Clock = std::chrono::high_resolution_clock;
-    std::chrono::time_point<Clock> m_beg{Clock::now()};
-
-public:
-    void reset() {
-        m_beg = Clock::now();
-    }
-
-    double elapsed() const {
-        return std::chrono::duration_cast<millisec>(Clock::now() - m_beg).count();
-    }
-};
+#include "Timer.hpp"
 
 int main() {
     VectorStore vdb_10K{};
-    VectorStore vdb_100K{};
-    VectorStore vdb_1M{};
+    // VectorStore vdb_100K{};
+    // VectorStore vdb_1M{};
     Timer t{};
 
-    auto sift_res{Importer::import_sift1m("/home/sp27022003/vector-db/sift/sift_base.fvecs", "/home/sp27022003/vector-db/sift/sift_query.fvecs", "/home/sp27022003/vector-db/sift/sift_groundtruth.ivecs", vdb_10K, 10000)};
+    auto sift_res{Importer::import_sift1m("/home/sp27022003/vector-db/sift10K/siftsmall_base.fvecs", "/home/sp27022003/vector-db/sift10K/siftsmall_query.fvecs", "/home/sp27022003/vector-db/sift10K/siftsmall_groundtruth.ivecs", 10000)};
 
-    sift_res = Importer::import_sift1m("/home/sp27022003/vector-db/sift/sift_base.fvecs", "/home/sp27022003/vector-db/sift/sift_query.fvecs", "/home/sp27022003/vector-db/sift/sift_groundtruth.ivecs", vdb_100K, 1'00'000);
+    auto fill_db{[&](VectorStore& vdb) {
+        std::vector<Vector> vectors{sift_res.ok_value().vectors};
+        std::vector<std::uint64_t> ids{sift_res.ok_value().ids};
 
-    sift_res = Importer::import_sift1m("/home/sp27022003/vector-db/sift/sift_base.fvecs", "/home/sp27022003/vector-db/sift/sift_query.fvecs", "/home/sp27022003/vector-db/sift/sift_groundtruth.ivecs", vdb_1M, 1'000'000);
+        for (std::size_t i{0}; i < vectors.size(); i++) {
+            vdb.insert(ids[i], std::move(vectors[i]));
+        }
+    }};
+
+    fill_db(vdb_10K);
+
+    // sift_res = Importer::import_sift1m("/home/sp27022003/vector-db/sift/sift_base.fvecs", "/home/sp27022003/vector-db/sift/sift_query.fvecs", "/home/sp27022003/vector-db/sift/sift_groundtruth.ivecs", 1'00'000);
+    // fill_db(vdb_100K);
+
+    // sift_res = Importer::import_sift1m("/home/sp27022003/vector-db/sift/sift_base.fvecs", "/home/sp27022003/vector-db/sift/sift_query.fvecs", "/home/sp27022003/vector-db/sift/sift_groundtruth.ivecs", 1'000'000);
+    // fill_db(vdb_1M);
 
     std::vector<std::vector<float>> queries{sift_res.ok_value().queries};
     std::vector<std::vector<std::uint32_t>> truths{sift_res.ok_value().truths};
     std::vector<std::uint32_t> truth_k{sift_res.ok_value().truth_k};
 
-    std::size_t num_queries = 1000;
+    std::size_t num_queries = queries.size();
     std::ofstream outf{"/home/sp27022003/vector-db/VectorDB_v0.1(Exhaustive Search Engine)/bench/benchmark_brute.txt"};
 
     auto calc_qps{[&](const VectorStore& vdb) {
         t.reset();
+        int intersection{0};
+        int k_sz{0};
         for (std::size_t i{0}; i < num_queries; i++) {
-            auto res = vdb.query(queries[i], truth_k[i]);
+            int my_k = truth_k[i];
+            auto res = vdb.query(queries[i], my_k, Metric::L2).ok_value();
+            k_sz += res.size();
+            for (const auto& [id, _] : res) {
+                // std::cout << id << "\n";
+                for (int j{0}; j < res.size(); j++) {
+                    // std::cout << truths[i][j] << " ";
+                    if (truths[i][j] == id) {
+                        intersection++;
+                        break;
+                    }
+                }
+                // std::cout << '\n';
+            }
         }
 
         double dur = t.elapsed() / num_queries;
+        int sz = vdb.size().ok_value();
 
-        outf << "MsPQ for " << vdb.size().ok_value() << " vectors : " << dur << " Milliseconds\n";
+        std::cout << "Intersection: " << intersection << "\n";
+        std::cout << "Total: " << k_sz << "\n";
 
-        outf << "QPS for " << vdb.size().ok_value() << " vectors : " << static_cast<int>(1000 / dur) << " queries\n";
+        outf << "MsPQ for " << sz << " vectors : " << dur << " Milliseconds\n";
+
+        double recall = static_cast<double>(intersection) / k_sz;
+
+        outf << "Recall@10 for " << sz << " vectors : " << recall * 100 << "%\n";
+
+        outf << "QPS for " << sz << " vectors : " << static_cast<int>(1000 / dur) << " queries\n";
 
         outf.flush();
     }};
 
     calc_qps(vdb_10K);
-    calc_qps(vdb_100K);
-    calc_qps(vdb_1M);
+    // calc_qps(vdb_100K);
+    // calc_qps(vdb_1M);
 }

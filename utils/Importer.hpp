@@ -7,6 +7,7 @@
 #include <charconv>
 #include <unordered_map>
 #include "VectorStore.hpp"
+#include "LSH_Index.hpp"
 
 enum class ImporterError : std::int32_t {
     GLoVEFileNotFound = (-1),
@@ -17,18 +18,22 @@ enum class ImporterError : std::int32_t {
 struct GloveRes {
     std::unordered_map<std::string, std::uint64_t> word_to_id;
     std::unordered_map<std::uint64_t, std::string> id_to_word;
+    std::vector<Vector> vectors;
+    std::vector<std::uint64_t> ids;
 };
 
 struct SiftRes {
     std::vector<std::vector<float>> queries;
     std::vector<std::vector<std::uint32_t>> truths;
     std::vector<std::uint32_t> truth_k;
+    std::vector<Vector> vectors;
+    std::vector<std::uint64_t> ids;
 };
 
 class Importer {
 public:
     //can take dimensions from caller
-    static Result<GloveRes, ImporterError> import_glove(const std::string& filename, VectorStore& vdb) {
+    static Result<GloveRes, ImporterError> import_glove(const std::string& filename) {
         GloveRes mr;
         // mr.id_to_word.reserve(1'200'000);
         // mr.word_to_id.reserve(1'200'000);
@@ -76,7 +81,8 @@ public:
                 mr.word_to_id.emplace(word, id);
                 mr.id_to_word.emplace(id, word);
 
-                vdb.insert(id, std::move(emb));
+                mr.vectors.push_back(std::move(emb));
+                mr.ids.push_back(id);
                 id++;
             }
 
@@ -86,7 +92,7 @@ public:
         return Ok{mr};
     }
 
-    static Result<SiftRes, ImporterError> import_sift1m(const std::string& data_file, const std::string& query_file, const std::string& truth_file, VectorStore& vdb, std::uint32_t k_imports = -1) {
+    static Result<SiftRes, ImporterError> import_sift1m(const std::string& data_file, const std::string& query_file, const std::string& truth_file, std::uint32_t k_imports = -1) {
         SiftRes mr;
 
         std::ifstream inf{}; 
@@ -117,7 +123,9 @@ public:
                 return Err{ImporterError::SIFT1MFileCorrupted};
             }
 
-            vdb.insert(cnt++, std::move(emb));
+            mr.vectors.push_back(std::move(emb));
+            mr.ids.push_back(cnt);
+            cnt++;
             k_imports--;
 
             if (inf.peek() == EOF || !k_imports) {
@@ -195,4 +203,4 @@ public:
         return Ok{mr};
     }
 };
-#endif
+#endif //IMPORTER_HPP

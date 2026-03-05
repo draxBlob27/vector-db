@@ -1,6 +1,7 @@
 #ifndef DISTANCES_HPP
 #define DISTANCES_HPP
-#include "VectorStore.hpp"
+#include "Vector.hpp"
+#include "Metric.hpp"
 
 template<Metric M>
 float calc_distance(const Vector& a, const Vector& b);
