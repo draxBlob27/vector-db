@@ -92,7 +92,7 @@ Result<std::vector<std::pair<std::uint64_t, float>>, DBError> VectorStore::query
         return Err<DBError>{DBError::DataBaseEmptyError};
     }
 
-    std::vector<std::pair<std::uint64_t, float>> res(std::min(static_cast<std::size_t>(k), m_vectors.size())); //handles if DB size is less than k.
+    std::vector<std::pair<std::uint64_t, float>> res; //handles if DB size is less than k.
 
     auto compute_q_norm{[&]() {
         float norm_data = 0.0f;
@@ -110,7 +110,6 @@ Result<std::vector<std::pair<std::uint64_t, float>>, DBError> VectorStore::query
     {
     case(Metric::L2): {
         std::priority_queue<std::pair<float, std::uint64_t>> pq;
-        std::size_t i{res.size() - 1};
         
         if (m_vectors[0].second.data.size() != q_vector.data.size()) { //no need for each data point check because these are already verified at insertion.
             return Err<DBError>{DBError::DimensionError};
@@ -122,7 +121,7 @@ Result<std::vector<std::pair<std::uint64_t, float>>, DBError> VectorStore::query
             //it.second -> Vector
             float distance{calc_distance<Metric::L2>(it.second, q_vector)};
 
-            if (pq.size() < res.size()) { //smaller is better
+            if (pq.size() < k) { //smaller is better
                 pq.push({distance, it.first}); //holds the id
             } else if (pq.top().first > distance) {
                 pq.pop();
@@ -131,14 +130,16 @@ Result<std::vector<std::pair<std::uint64_t, float>>, DBError> VectorStore::query
         }
 
         while (!pq.empty()) {
-            res[i--] = {pq.top().second, pq.top().first};
+            res.push_back({pq.top().second, pq.top().first});
             pq.pop();
         }
+
+        std::ranges::reverse(res);
         break;
     }
     case(Metric::DotProduct): {
         std::priority_queue<std::pair<float, std::uint64_t>, std::vector<std::pair<float, std::uint64_t>>, std::greater<>> pq;
-        std::size_t i{res.size() - 1};
+
         
         if (m_vectors[0].second.data.size() != q_vector.data.size()) { //no need for each data point check because these are already verified at insertion.
             return Err<DBError>{DBError::DimensionError};
@@ -150,7 +151,7 @@ Result<std::vector<std::pair<std::uint64_t, float>>, DBError> VectorStore::query
             //it.second -> Vector
             float distance{calc_distance<Metric::DotProduct>(it.second, q_vector)};
             
-            if (pq.size() < res.size()) { //larger is better due to similarity -> vector more aligned
+            if (pq.size() < k) { //larger is better due to similarity -> vector more aligned
                 pq.push({distance, it.first}); //holds the id
             } else if (pq.top().first < distance) {
                 pq.pop();
@@ -159,14 +160,15 @@ Result<std::vector<std::pair<std::uint64_t, float>>, DBError> VectorStore::query
         }
 
         while (!pq.empty()) {
-            res[i--] = {pq.top().second, pq.top().first};
+            res.push_back({pq.top().second, pq.top().first});
             pq.pop();
         }
+
+        std::ranges::reverse(res);
         break;
     }
     case (Metric::Cosine): {
         std::priority_queue<std::pair<float, std::uint64_t>, std::vector<std::pair<float, std::uint64_t>>, std::greater<>> pq;
-        std::size_t i{res.size() - 1};
         
         Vector copied_q_vector{q_vector};
         copied_q_vector.compute_norm(); //perform normailzation of query vector
@@ -186,9 +188,9 @@ Result<std::vector<std::pair<std::uint64_t, float>>, DBError> VectorStore::query
                 continue;
             }
             
-            float distance{calc_distance<Metric::Cosine>(it.second, q_vector)};
+            float distance{calc_distance<Metric::Cosine>(it.second, copied_q_vector)};
 
-            if (pq.size() < res.size()) {
+            if (pq.size() < k) {
                 pq.push({distance, it.first}); //holds the id
             } else if (pq.top().first < distance) {
                 pq.pop();
@@ -197,9 +199,11 @@ Result<std::vector<std::pair<std::uint64_t, float>>, DBError> VectorStore::query
         }
 
         while (!pq.empty()) {
-            res[i--] = {pq.top().second, pq.top().first};
+            res.push_back({pq.top().second, pq.top().first});
             pq.pop();
         }
+
+        std::ranges::reverse(res);
         break;
     }
     default:

@@ -4,6 +4,6 @@
 .DS_Store
 tessstt.cpp
 *.txt
-sift
+sift*
 *.gz
 .venv
