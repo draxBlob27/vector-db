@@ -5,9 +5,9 @@
 #include "Timer.hpp"
 
 int main() {
-    int tab{6};
+    int tab{10}, proj{12};
     // for (int tab{5}; tab < 10; tab++) {
-        for (int proj{10}; proj < 26; proj++) {
+        // for (int proj{10}; proj < 26; proj++) {
             // LSHIndex lsh_10k(12, 20);
             // LSHIndex lsh_100k(20, 20);
             // std::uint32_t tab{12}, proj{12};
@@ -41,7 +41,7 @@ int main() {
                 int intersection{0};
                 int my_k{10};
 
-                std::ofstream outf{"/home/sp27022003/vector-db/LSH_and_GRAPH_BASED_INDEXING/bench/benchmark_lsh.txt", std::ios::app};
+                std::ofstream outf{"/home/sp27022003/vector-db/LSH_and_GRAPH_BASED_INDEXING/bench/benchmark_lsh.txt"};
         
                 for (std::size_t i{0}; i < num_queries; i++) {
                     auto res = lsh.query(queries[i], my_k); //impilcit conversion fo float query to Vector query
@@ -70,6 +70,6 @@ int main() {
             // calc_qps(lsh_10k);
             // calc_qps(lsh_100k);
             calc_qps(lsh_1M);
-        }
+        // }
     // }
 }
