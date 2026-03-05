@@ -166,35 +166,46 @@ std::vector<std::pair<std::uint64_t, float>> LSHIndex::query(const Vector& query
     auto it = std::ranges::unique(st);
     st.erase(it.begin(), it.end());
 
-    // int j{0};
-    // while (st.size() < k && j < m_num_projections) {
-    //     for (std::uint32_t i{0}; i < m_num_tables; i++) {
-    //         std::uint64_t hash = hash_vals[i];
+    int j{0};
+    while (st.size() < k && j < m_num_projections) {
+        for (std::uint32_t i{0}; i < m_num_tables; i++) {
+            std::uint64_t hash = hash_vals[i];
 
-    //         hash ^= (1ULL << j); //flipping 1 bit in case we dont have enogh matching vectos
+            hash ^= (1ULL << j); //flipping 1 bit in case we dont have enogh matching vectos
 
-    //         auto got = m_hash_tables[i].find(hash);
-    //         if (got != m_hash_tables[i].end()) {
-    //             for (const auto& it : got->second) { //extracting collided vectors with same hash val
-    //                 st.insert(it); //de-duplicating
-    //             }
-    //         } 
-    //     }
+            auto got = m_hash_tables[i].find(hash);
+            if (got != m_hash_tables[i].end()) {
+                for (const auto& it : got->second) { //extracting collided vectors with same hash val
+                    st.push_back(it); //de-duplicating
+                }
+            } 
+        }
 
-    //     j++;
-    //     info.bitflips++;
-    // }
+        j++;
+        info.bitflips++;
+    }
 
     info.candidate_set_size = st.size();
 
-    std::priority_queue<std::pair<float, uint64_t>, std::vector<std::pair<float, std::uint64_t>>, std::greater<>> pq; //min heap
+    // std::priority_queue<std::pair<float, uint64_t>, std::vector<std::pair<float, std::uint64_t>>, std::greater<>> pq; //min heap
+    std::priority_queue<std::pair<float, uint64_t>> pq; //max_heap
 
     for (const auto& it: st) {
         m_vectors[it].second.compute_norm();
-        float dist = calc_distance<Metric::Cosine>(m_vectors[it].second, copied_query);
+        float dist = calc_distance<Metric::L2>(m_vectors[it].second, copied_query);
         //cosine metirc, higher val is better;
+        // if (pq.size() >= k) {
+        //     if (pq.top().first < dist) {
+        //         pq.pop();
+        //         pq.push({dist, m_vectors[it].first});
+        //     }
+        // } else {
+        //     pq.push({dist, m_vectors[it].first});
+        // }
+
+        //For L2
         if (pq.size() >= k) {
-            if (pq.top().first < dist) {
+            if (pq.top().first > dist) {
                 pq.pop();
                 pq.push({dist, m_vectors[it].first});
             }
