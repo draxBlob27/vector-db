@@ -70,12 +70,7 @@ class LSHIndex {
         void stream_write(const std::vector<Vector>& data, const std::string& e_msg, std::ofstream& outf);
 
     public:
-        LSHIndex(const std::uint32_t& num_tables, const std::uint32_t& num_projections)
-            :m_num_tables{num_tables}, m_num_projections{num_projections}
-        {
-            m_hash_tables.resize(m_num_tables);
-            m_hyperplanes.resize(m_num_tables, std::vector<Vector>(m_num_projections));
-        }
+        LSHIndex(const std::uint32_t& num_tables, const std::uint32_t& num_projections);
 
         void build(std::vector<std::pair<std::uint64_t, Vector>> vectors);
 

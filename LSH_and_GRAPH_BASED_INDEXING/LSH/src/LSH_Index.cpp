@@ -7,6 +7,13 @@ std::ostream& operator<<(std::ostream& out, const index_info& inf) {
     return out;
 }
 
+LSHIndex::LSHIndex(const std::uint32_t& num_tables, const std::uint32_t& num_projections)
+            :m_num_tables{num_tables}, m_num_projections{num_projections}
+        {
+            m_hash_tables.resize(m_num_tables);
+            m_hyperplanes.resize(m_num_tables, std::vector<Vector>(m_num_projections));
+        }
+
 std::uint64_t LSHIndex::hash_val(const Vector& a, const std::vector<Vector>& planes) {
                 
     std::uint64_t hash{0};

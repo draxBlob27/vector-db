@@ -7,3 +7,5 @@ tessstt.cpp
 sift*
 *.gz
 .venv
+*.pdf
+*.ipynb
