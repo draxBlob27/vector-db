@@ -12,6 +12,7 @@
 #include "distances.hpp"
 #include "errors.hpp"
 #include "Random_engine.hpp"
+#include "Serializer_De.hpp"
 
 struct index_info {
     std::size_t candidate_set_size;
@@ -46,31 +47,8 @@ class LSHIndex {
         //function for finding hash val for each table with random projections --- 101010100011 like this
         std::uint64_t hash_val(const Vector& a, const std::vector<Vector>& planes);
 
-        void stream_valid(const std::string& e_msg, std::ofstream& outf);
-
-        void stream_valid(const std::string& e_msg, std::ifstream& inf);
-
-        template <typename T>
-        void corruption_check(const T& a, const T& b);
-
-        template <typename T>
-        void stream_write(const T& data, const std::string& e_msg, std::ofstream& outf);
-
-        template <typename T>
-        void stream_read(T& var, const std::string& e_msg, std::ifstream& inf);
-
-        void stream_read(Vector& var, const std::string& e_msg, std::ifstream& inf);
-        
-        template <typename T>
-        void stream_read(std::vector<T>& vec, const std::string& e_msg, std::ifstream& inf);
-
-        template <typename T>
-        void stream_write(const std::vector<T>& data, const std::string& e_msg, std::ofstream& outf);
-
-        void stream_write(const std::vector<Vector>& data, const std::string& e_msg, std::ofstream& outf);
-
     public:
-        LSHIndex(const std::uint32_t& num_tables, const std::uint32_t& num_projections);
+        LSHIndex(const std::uint32_t& num_tables = 0, const std::uint32_t& num_projections = 0);
 
         void build(std::vector<std::pair<std::uint64_t, Vector>> vectors);
 

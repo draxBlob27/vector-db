@@ -18,8 +18,8 @@ int main() {
             auto sift_res = Importer::import_sift1m("/home/sp27022003/vector-db/sift10K/siftsmall_base.fvecs", "/home/sp27022003/vector-db/sift10K/siftsmall_query.fvecs", "/home/sp27022003/vector-db/sift10K/siftsmall_groundtruth.ivecs", 10000);
         
             std::vector<std::pair<std::uint64_t, Vector>> data;
-            std::vector<std::uint64_t> ids{sift_res.ok_value().ids};
-            std::vector<Vector> vectors{sift_res.ok_value().vectors};
+            const std::vector<std::uint64_t>& ids{sift_res.ok_value().ids};
+            const std::vector<Vector>& vectors{sift_res.ok_value().vectors};
             for (std::size_t i{0}; i < ids.size(); i++) {
                 // std::cout << i << '\n';
                 data.push_back({ids[i], vectors[i]});
@@ -30,9 +30,9 @@ int main() {
             lsh_1M.build(std::move(data));
         
         
-            std::vector<std::vector<float>> queries{sift_res.ok_value().queries};
-            std::vector<std::vector<std::uint32_t>> truths{sift_res.ok_value().truths};
-            std::vector<std::uint32_t> truth_k{sift_res.ok_value().truth_k};
+            const std::vector<std::vector<float>>& queries{sift_res.ok_value().queries};
+            const std::vector<std::vector<std::uint32_t>>& truths{sift_res.ok_value().truths};
+            const std::vector<std::uint32_t>& truth_k{sift_res.ok_value().truth_k};
         
             std::size_t num_queries = 100;
             // std::ofstream outf{"/home/sp27022003/vector-db/VectorDB_v0.1(Exhaustive Search Engine)/bench/benchmark_brute.txt"};
