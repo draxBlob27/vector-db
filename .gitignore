@@ -7,3 +7,4 @@ tessstt.cpp
 sift*
 *.gz
 .venv
+!CMakeLists.txt
