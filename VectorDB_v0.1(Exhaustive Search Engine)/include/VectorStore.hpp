@@ -52,7 +52,7 @@ public:
 
     Result<std::vector<float>, DBError> get(std::uint64_t id) const;
 
-    Result<std::vector<std::pair<std::uint64_t, float>>, DBError> query (const Vector& q_vector, std::uint64_t k = 10, Metric metric = Metric::L2) const ;
+    Result<std::vector<std::pair<std::uint64_t, float>>, DBError> query (const Vector& q_vector, std::uint64_t k = 10, Metric metric = Metric::Cosine) const ;
 
     Result<Unit, DBError> save(const std::string& filename) const;
 

@@ -109,9 +109,9 @@ Result<std::vector<std::pair<std::uint64_t, float>>, DBError> VectorStore::query
     switch (metric)
     {
     case(Metric::L2): {
-        std::priority_queue<std::pair<float, std::uint64_t>> pq; //max head, becuase closer is better, and we keep the farthest best .ie. kth closest vector.
+        std::priority_queue<std::pair<float, std::uint64_t>> pq;
         
-        if (m_vectors[0].second.size() != q_vector.size()) { //no need for each data point check because these are already verified at insertion.
+        if (m_vectors[0].second.data.size() != q_vector.data.size()) { //no need for each data point check because these are already verified at insertion.
             return Err<DBError>{DBError::DimensionError};
         }
 
@@ -168,7 +168,7 @@ Result<std::vector<std::pair<std::uint64_t, float>>, DBError> VectorStore::query
         break;
     }
     case (Metric::Cosine): {
-        std::priority_queue<std::pair<float, std::uint64_t>, std::vector<std::pair<float, std::uint64_t>>, std::greater<>> pq; //min heap, because closer vectos have higher score and hence we keep at top the kth closest vector.
+        std::priority_queue<std::pair<float, std::uint64_t>, std::vector<std::pair<float, std::uint64_t>>, std::greater<>> pq;
         
         Vector copied_q_vector{q_vector};
         copied_q_vector.compute_norm(); //perform normailzation of query vector
