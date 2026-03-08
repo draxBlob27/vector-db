@@ -7,6 +7,13 @@ std::ostream& operator<<(std::ostream& out, const index_info& inf) {
     return out;
 }
 
+LSHIndex::LSHIndex(const std::uint32_t& num_tables, const std::uint32_t& num_projections)
+            :m_num_tables{num_tables}, m_num_projections{num_projections}
+        {
+            m_hash_tables.resize(m_num_tables);
+            m_hyperplanes.resize(m_num_tables, std::vector<Vector>(m_num_projections));
+        }
+
 std::uint64_t LSHIndex::hash_val(const Vector& a, const std::vector<Vector>& planes) {
                 
     std::uint64_t hash{0};
@@ -23,72 +30,6 @@ std::uint64_t LSHIndex::hash_val(const Vector& a, const std::vector<Vector>& pla
     }
 
     return hash;
-}
-
-void LSHIndex::stream_valid(const std::string& e_msg, std::ofstream& outf) { //cannot pass string view as exceptions need to own error message to keep them alive while stack unfolding
-    if (outf.bad() || outf.fail()) {
-        throw InsufficientSpaceError(e_msg);
-    }
-};
-
-void LSHIndex::stream_valid(const std::string& e_msg, std::ifstream& inf) { //cannot pass string view as exceptions need to own error message to keep them alive while stack unfolding
-    if (inf.bad() || inf.fail()) {
-        throw CorruptedDataError(e_msg);
-    }
-};
-
-
-template <typename T>
-void LSHIndex::corruption_check(const T& a, const T& b) {
-    if (a != b) {
-        throw CorruptedDataError("Data Corrupted\n");
-    }
-}
-
-template <typename T>
-void LSHIndex::stream_write(const T& data, const std::string& e_msg, std::ofstream& outf) {
-    outf.write(reinterpret_cast<const char*>(&data), sizeof(data));
-    stream_valid(e_msg, outf);
-}
-
-template <typename T>
-void LSHIndex::stream_read(T& var, const std::string& e_msg, std::ifstream& inf) {
-    inf.read(reinterpret_cast<char*>(&var), sizeof(var));
-    stream_valid(e_msg, inf);
-}
-
-void LSHIndex::stream_read(Vector& var, const std::string& e_msg, std::ifstream& inf) {
-    var.data.resize(m_dimension);
-    inf.read(reinterpret_cast<char*>(&var.data[0]), m_dimension * sizeof(float));
-    stream_valid(e_msg, inf);
-}
-
-template <typename T>
-void LSHIndex::stream_read(std::vector<T>& vec, const std::string& e_msg, std::ifstream& inf) {
-    inf.read(reinterpret_cast<char *>(&vec[0]), vec.size() * sizeof(T));
-    stream_valid(e_msg, inf);
-}
-
-template <typename T>
-void LSHIndex::stream_write(const std::vector<T>& data, const std::string& e_msg, std::ofstream& outf) {
-    if (data.empty()) {
-        throw InvalidOperationError("Empty Data passed on\n");
-    }
-    unsigned const char* d_ptr{reinterpret_cast<unsigned const char*>(&data[0])};
-    outf.write(reinterpret_cast<const char*>(d_ptr), data.size() * sizeof(T));
-    stream_valid(e_msg, outf);
-}
-
-void LSHIndex::stream_write(const std::vector<Vector>& data, const std::string& e_msg, std::ofstream& outf) {
-    if (data.empty()) {
-        throw InvalidOperationError("Empty Data passed on\n");
-    }
-
-    for (const auto& emb : data) {
-        using namespace std::string_literals;
-        stream_write(emb.data, "Insufficient space on disk"s, outf);
-        stream_valid(e_msg, outf);
-    }
 }
 
 void LSHIndex::build(std::vector<std::pair<std::uint64_t, Vector>> vectors)
@@ -243,82 +184,78 @@ void LSHIndex::save(const std::string& filename) {
     */
 
     std::ofstream outf("LSH_and_GRAPH_BASED_INDEXING/LSH/persist/" + filename, std::ios::binary);
-    if (!outf) {
-        throw FileNotFoundError("Uh oh, file: " + filename + " could not be opened for writing!\n");
-    }
+    Serializer_De::file_exists(filename, outf);
     
     using namespace std::string_literals;
-    stream_write(LSHIndex::s_magic_bytes, "Insufficient space on disk"s, outf);
-    stream_write(LSHIndex::s_version, "Insufficient space on disk"s, outf);
+    Serializer_De::stream_write(LSHIndex::s_magic_bytes, "Insufficient space on disk"s, outf);
+    Serializer_De::stream_write(LSHIndex::s_version, "Insufficient space on disk"s, outf);
 
-    stream_write(m_num_tables, "Insufficient space on disk"s, outf);
-    stream_write(m_num_projections, "Insufficient space on disk"s, outf);
-    stream_write(m_dimension, "Insufficient space on disk"s, outf);
-    stream_write(m_count, "Insufficient space on disk"s, outf);
+    Serializer_De::stream_write(m_num_tables, "Insufficient space on disk"s, outf);
+    Serializer_De::stream_write(m_num_projections, "Insufficient space on disk"s, outf);
+    Serializer_De::stream_write(m_dimension, "Insufficient space on disk"s, outf);
+    Serializer_De::stream_write(m_count, "Insufficient space on disk"s, outf);
 
     for (const auto& planes : m_hyperplanes) {
-        stream_write(planes, "Insufficient space on disk"s, outf); //template specialization
+        Serializer_De::stream_write(planes, "Insufficient space on disk"s, outf); //template specialization
     }
 
     for (const auto& table : m_hash_tables) {
-        stream_write(table.size(), "Insufficient space on disk"s, outf); //how many active hash for this table
+        Serializer_De::stream_write(table.size(), "Insufficient space on disk"s, outf); //how many active hash for this table
         for (const auto& [hash, ids] : table) {
-            stream_write(hash, "Insufficient space on disk"s, outf); //hash_val of current hash
-            stream_write(ids.size(), "Insufficient space on disk"s, outf); //no of vectors in this buccket
-            stream_write(ids, "Insufficient space on disk"s, outf); //there ids
+            Serializer_De::stream_write(hash, "Insufficient space on disk"s, outf); //hash_val of current hash
+            Serializer_De::stream_write(ids.size(), "Insufficient space on disk"s, outf); //no of vectors in this buccket
+            Serializer_De::stream_write(ids, "Insufficient space on disk"s, outf); //there ids
         }
     }
 
     for (const auto& vec : m_vectors) {
-        stream_write(vec.first, "Insufficient space on disk"s, outf);
-        stream_write(vec.second.data, "Insufficient space on disk"s, outf);
+        Serializer_De::stream_write(vec.first, "Insufficient space on disk"s, outf);
+        Serializer_De::stream_write(vec.second.data, "Insufficient space on disk"s, outf);
     }
 }
 
 void LSHIndex::load(const std::string& filename) {
     std::ifstream inf("LSH_and_GRAPH_BASED_INDEXING/LSH/persist/" + filename, std::ios::binary);
-    if (!inf) {
-        throw FileNotFoundError("Uh oh, file: " + filename + " could not be opened for reading!\n");
-    }
+    Serializer_De::file_exists(filename, inf);
     
     using namespace std::string_literals;
     std::uint32_t magic_bytes, version;
 
 
-    stream_read(magic_bytes, "File corrupted\n"s, inf);
-    corruption_check(magic_bytes, s_magic_bytes);
+    Serializer_De::stream_read(magic_bytes, "File corrupted\n"s, inf);
+    Serializer_De::corruption_check(magic_bytes, s_magic_bytes);
 
-    stream_read(version, "File corrupted\n"s, inf);
-    corruption_check(version, s_version);
+    Serializer_De::stream_read(version, "File corrupted\n"s, inf);
+    Serializer_De::corruption_check(version, s_version);
 
-    stream_read(m_num_tables, "File corrupted\n"s, inf);
-    stream_read(m_num_projections, "File corrupted\n"s, inf);
-    stream_read(m_dimension, "File corrupted\n"s, inf);
-    stream_read(m_count, "File corrupted\n"s, inf);
+    Serializer_De::stream_read(m_num_tables, "File corrupted\n"s, inf);
+    Serializer_De::stream_read(m_num_projections, "File corrupted\n"s, inf);
+    Serializer_De::stream_read(m_dimension, "File corrupted\n"s, inf);
+    Serializer_De::stream_read(m_count, "File corrupted\n"s, inf);
 
     m_hash_tables.resize(m_num_tables);
     m_hyperplanes.resize(m_num_tables, std::vector<Vector>(m_num_projections));
 
     for (std::size_t i{0}; i < m_num_tables; i++) {
         for (std::size_t j{0}; j < m_num_projections; j++) {
-            stream_read(m_hyperplanes[i][j], "File corrupted\n"s, inf);
+            Serializer_De::stream_read(m_hyperplanes[i][j], "File corrupted\n"s, inf);
         }
     }
 
     for (std::size_t i{0}; i < m_num_tables; i++) {
         std::size_t active_hashes;
-        stream_read(active_hashes, "File corrupted\n"s, inf);
+        Serializer_De::stream_read(active_hashes, "File corrupted\n"s, inf);
         m_hash_tables[i].reserve(active_hashes);
 
         for (std::size_t j{0}; j < active_hashes; j++) {
             std::uint64_t hash;
-            stream_read(hash, "File corrupted\n"s, inf);
+            Serializer_De::stream_read(hash, "File corrupted\n"s, inf);
 
             std::size_t collisions;
-            stream_read(collisions, "File corrupted\n"s, inf);
+            Serializer_De::stream_read(collisions, "File corrupted\n"s, inf);
 
             m_hash_tables[i][hash].resize(collisions);
-            stream_read(m_hash_tables[i][hash], "File corrupted\n"s, inf);
+            Serializer_De::stream_read(m_hash_tables[i][hash], "File corrupted\n"s, inf);
         }
     }
 
@@ -328,8 +265,9 @@ void LSHIndex::load(const std::string& filename) {
         std::uint64_t id;
         Vector v;
 
-        stream_read(id, "File corrupted\n"s, inf);
-        stream_read(v, "File corrupted\n"s, inf);
+        Serializer_De::stream_read(id, "File corrupted\n"s, inf);
+        v.data.resize(m_dimension);
+        Serializer_De::stream_read(v, "File corrupted\n"s, inf);
 
         m_vectors[i] = {id, std::move(v)};
     }

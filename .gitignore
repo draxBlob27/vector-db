@@ -8,3 +8,5 @@ sift*
 *.gz
 .venv
 !CMakeLists.txt
+*.pdf
+*.ipynb
