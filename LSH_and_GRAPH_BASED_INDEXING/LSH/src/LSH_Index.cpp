@@ -103,10 +103,6 @@ std::vector<std::pair<std::uint64_t, float>> LSHIndex::query(const Vector& query
         // }
     }
 
-    std::ranges::sort(st);
-    auto it = std::ranges::unique(st);
-    st.erase(it.begin(), it.end());
-
     int j{0};
     while (st.size() < k && j < m_num_projections) {
         for (std::uint32_t i{0}; i < m_num_tables; i++) {
@@ -125,6 +121,10 @@ std::vector<std::pair<std::uint64_t, float>> LSHIndex::query(const Vector& query
         j++;
         info.bitflips++;
     }
+
+    std::ranges::sort(st);
+    auto it = std::ranges::unique(st);
+    st.erase(it.begin(), it.end());
 
     info.candidate_set_size = st.size();
 

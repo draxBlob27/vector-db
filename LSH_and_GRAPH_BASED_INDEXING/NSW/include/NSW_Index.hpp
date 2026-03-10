@@ -28,27 +28,27 @@ private:
             return search_layer(v, m_efConstruction, m_M);
         }
         //To keep candidtate vectors in heap, we should take min heap, so then closest is at top.
-        std::priority_queue<std::pair<float, std::uint64_t>> candidates; //{score, id}
+        std::priority_queue<std::pair<float, std::uint64_t>, std::vector<std::pair<float, std::uint64_t>>, std::greater<>> candidates; //{score, id}
         //contains potential candiaties
-
+        
         //contains efclose vectors, with top as farthest of close vector till now
         std::priority_queue<std::pair<float, std::uint64_t>> found_closest;
 
         std::unordered_set<std::uint64_t> vis;
 
         vis.insert(m_entry_point);
-        candidates.push({-calc_distance<Metric::L2>(m_nodes[m_entry_point].vector, v), m_entry_point});
+        candidates.push({calc_distance<Metric::L2>(m_nodes[m_entry_point].vector, v), m_entry_point});
         found_closest.push({calc_distance<Metric::L2>(m_nodes[m_entry_point].vector, v), m_entry_point});
 
         while (!candidates.empty()) {//maintain the candidate size
             auto [score, nodeId] = candidates.top();
             candidates.pop();
 
-            if (-score > found_closest.top().first) { //if dist is futher than the farthest best vector then break;
+            if (score > found_closest.top().first) { //if dist is futher than the farthest best vector then break;
                 break;
             }
 
-            for (auto nei : m_nodes[nodeId].neighbors) {
+            for (const auto& [__, nei] : m_nodes[nodeId].neighbors) {
                 auto [_, inserted] = vis.insert(nei);
 
                 if (!inserted) {
@@ -94,8 +94,9 @@ public:
         Problem statement: Insert a vector in index.
         Why: To build the index and allow new data points sequentially or iteratively
         Soln: 1.) If coming vector is first then assign it as entry point for incoming vectors.
-            2.) For each incoming vector take distance with best/closest efConstruction vectors. ef-> expoloration factor during...
-            3.) 
+            2.) For each incoming vector take distance with best/closest efConstruction vectors. ef-> expoloration factor. 
+            3.) Connect best k of these ef vectors to the incoming vector.
+            4.) During this process if it happens to incerase the nodes connected of just now connected nodes, then find best of those, and prune remaining.
     */
     void insert(std::uint64_t id, const Vector& v) {
         // If this vector is first then assign it as entry point for incoming vectors.
@@ -112,22 +113,32 @@ public:
         std::uint64_t inc_id{m_num_nodes - 1};
 
         std::vector<std::pair<std::uint64_t, float>> best{search_layer(v)}; //no issue of copoying, becase of mandatory copy elision in RVO
-        std::uint32_t sz{static_cast<uint32_t>(best.size())};
-        inc.neighbors.reserve(sz);
+        // inc.neighbors.reserve(sz);
 
-        for (std::uint32_t i{0}; i < sz; i++) {
-            std::uint64_t closest_id{best[i].first};
+        for (const auto& [closest_id, closest_dist] : best) {
 
-            inc.neighbors.push_back(closest_id); //inesrt id of closest nei -- creating graph edges
+            inc.neighbors.push_back({closest_dist, closest_id}); //inesrt {score, id} of closest nei -- creating graph edges
 
-            m_nodes[closest_id].neighbors.push_back(inc_id);
+            m_nodes[closest_id].neighbors.push_back({closest_dist, inc_id});
 
             //if we connect this new inc vector to its closest nodes, then we need to recheck if there degree becomes more than M.
             //TODO -> in later stages
         }
+
+        for (const auto& [closest_id, _] : best) {
+            m_nodes[closest_id].align(m_M);
+        }
+
+        inc.align(m_M);
+
+        // m_entry_point = id;
     }
 
-    std::vector<std::pair<std::uint64_t, float>> query(const Vector& v, std::uint32_t k, std::uint32_t efSearch) const {
+    std::vector<std::pair<std::uint64_t, float>> query(const Vector& v, std::uint32_t k, std::uint32_t efSearch = 0) const {
+        if (!efSearch) {
+            return query(v, k, m_efSearch);
+        }
+
         std::vector<std::pair<std::uint64_t, float>> best{search_layer(v, efSearch, k)};
 
         for (auto& [lg_id, score] : best) {

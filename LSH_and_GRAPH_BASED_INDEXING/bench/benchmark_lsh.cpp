@@ -1,11 +1,12 @@
 #include <iostream>
 #include <fstream>
+#include <string>
 #include "Importer.hpp"
 #include "LSH_Index.hpp"
 #include "Timer.hpp"
 
 int main() {
-    int tab{10}, proj{12};
+    int tab{4}, proj{10};
     // for (int tab{5}; tab < 10; tab++) {
         // for (int proj{10}; proj < 26; proj++) {
             // LSHIndex lsh_10k(12, 20);
@@ -14,8 +15,10 @@ int main() {
             LSHIndex lsh_1M(tab, proj);
             // LSHIndex lsh_10K(10, 12);
             Timer t{};
+
+            std::string dir = "/home/sp27022003/vector-db/sift1M/";
         
-            auto sift_res = Importer::import_sift1m("/home/sp27022003/vector-db/sift10K/siftsmall_base.fvecs", "/home/sp27022003/vector-db/sift10K/siftsmall_query.fvecs", "/home/sp27022003/vector-db/sift10K/siftsmall_groundtruth.ivecs", 10000);
+            auto sift_res = Importer::import_sift1m(dir + "sift_base.fvecs", dir + "sift_query.fvecs", dir + "sift_groundtruth.ivecs");
         
             std::vector<std::pair<std::uint64_t, Vector>> data;
             const std::vector<std::uint64_t>& ids{sift_res.ok_value().ids};
@@ -41,7 +44,7 @@ int main() {
                 int intersection{0};
                 int my_k{10};
 
-                std::ofstream outf{"/home/sp27022003/vector-db/LSH_and_GRAPH_BASED_INDEXING/bench/benchmark_lsh.txt"};
+                std::ofstream outf{"/home/sp27022003/vector-db/LSH_and_GRAPH_BASED_INDEXING/bench/benchmark_lsh.txt", std::ios::app};
         
                 for (std::size_t i{0}; i < num_queries; i++) {
                     auto res = lsh.query(queries[i], my_k); //impilcit conversion fo float query to Vector query

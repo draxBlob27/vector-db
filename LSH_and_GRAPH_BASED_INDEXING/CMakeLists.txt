@@ -18,9 +18,8 @@ target_sources(LSH_Index
         BASE_DIRS
             "LSH/include"
             "../utils"
-            "../VectorDB_v0.1(Exhaustive Search Engine)/include"
         FILES
-            LSH/include/LSH_Index.hpp
+            "LSH/include/LSH_Index.hpp"
 )
 
 # add_subdirectory(test)

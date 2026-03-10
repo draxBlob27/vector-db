@@ -1,4 +1,0 @@
-Table: 10 and Proj: 12
-MsPQ for Index size: 10000 vectors : 0.38012 Milliseconds
-Recall@10 for Index size: 10000 vectors : 81%
-QPS for Index size: 10000 vectors : 2630 queries
