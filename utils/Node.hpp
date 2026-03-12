@@ -1,31 +1,51 @@
 #ifndef NODE_HPP
 #define NODE_HPP
 #include <vector>
+#include <set>
+#include <algorithm>
 #include "Vector.hpp"
 
 struct Node {
-    std::size_t id;
+    std::uint64_t id;
     Vector vector;
-    std::vector<std::size_t> neighbors;
+    std::vector<std::pair<float, std::uint64_t>> neighbors;
 
     Node(const std::uint64_t& id, const Vector& v)
         :id{id}, vector{v}
     {}
 
-    std::size_t data_size() const {
+    Node() = default;
+
+    std::uint64_t data_size() const {
         return vector.size();
     }
 
-    std::size_t edges() const {
+    std::uint32_t edges() const {
         return neighbors.size();
     }
 
-    Vector data() const {
+    const Vector& data() const {
         return vector;
     }
 
-    std::size_t getId() const {
+    std::uint64_t getId() const {
         return id;
+    }
+
+    void align(uint32_t max_M) {
+        if (static_cast<double>(neighbors.size())<= static_cast<double>(1.5 * max_M)) return;
+        
+        auto nth{neighbors.begin() + max_M};
+        std::ranges::nth_element(neighbors, nth);
+        neighbors.erase(nth, neighbors.end());
+    }
+
+    friend bool operator==(const Node& a, const Node& b) {
+        return a.id == b.id && a.vector == b.vector && a.neighbors == b.neighbors;
+    }
+
+    friend bool operator!=(const Node& a, const Node& b) {
+        return !(a == b);
     }
 };
 

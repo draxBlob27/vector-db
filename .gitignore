@@ -10,3 +10,5 @@ sift*
 !CMakeLists.txt
 *.pdf
 *.ipynb
+persist
+

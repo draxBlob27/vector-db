@@ -1,5 +1,7 @@
 #ifndef RESULT_HPP
 #define RESULT_HPP
+#include <variant>
+
 template <typename T>
 class Ok {
     T value;

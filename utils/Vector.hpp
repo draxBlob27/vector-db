@@ -39,5 +39,13 @@ struct Vector {
     std::size_t size() const {
         return data.size();
     }
+
+    friend bool operator==(const Vector& a, const Vector& b) {
+        return a.data == b.data;
+    }
+
+    friend bool operator!=(const Vector& a, const Vector& b) {
+        return !(a == b);
+    }
 };
 #endif //VECTOR_HPP

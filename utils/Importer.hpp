@@ -6,8 +6,9 @@
 #include <ios>
 #include <charconv>
 #include <unordered_map>
-#include "VectorStore.hpp"
-#include "LSH_Index.hpp"
+#include <vector>
+#include "Vector.hpp"
+#include "Result.hpp"
 
 enum class ImporterError : std::int32_t {
     GLoVEFileNotFound = (-1),
