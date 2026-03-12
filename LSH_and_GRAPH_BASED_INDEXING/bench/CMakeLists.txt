@@ -8,17 +8,14 @@ add_executable(benchmark_nsw)
 target_sources(benchmark_nsw
     PRIVATE
         benchmark_nsw.cpp
-    
+)
+
+target_link_libraries(benchmark_nsw
     PUBLIC
-        FILE_SET HEADERS
-        BASE_DIRS
-            "../NSW/include"                    # <-- points to NSW/ folder
-            "../../utils"
-        FILES
-            "../NSW/include/NSW_Index.hpp"      # <-- correct path
+        NSW_Index
 )
 
 target_link_libraries(benchmark_lsh
-    PRIVATE
+    PUBLIC
         LSH_Index
 )

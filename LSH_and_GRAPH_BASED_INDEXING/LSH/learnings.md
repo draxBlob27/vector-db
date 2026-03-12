@@ -1,29 +1,130 @@
-1. [Visual LSH](https://randorithms.com/2019/09/19/Visual-LSH.html)  
-2. [Locality Sensitive Hashing (LSH): The Illustrated Guide](https://www.pinecone.io/learn/series/faiss/locality-sensitive-hashing/)  
-3. [Random Projection for Locality Sensitive Hashing](https://www.pinecone.io/learn/series/faiss/locality-sensitive-hashing-random-projection/)  
-4. [Sparse Implementation](https://github.com/pinecone-io/examples/tree/main/learn/search/faiss-ebook/locality-sensitive-hashing-traditional)  
+# LSH Experiments
+
+## Benchmarks
+
+### Index Size: 1M vectors
+---
+| Tables | Projections | MsPQ (ms) | Recall@10 | QPS |
+| ------ | ----------- | --------- | --------- | --- |
+| 10     | 12          | 33.98     | 85%       | 29  |
+| 10     | 12          | 30.30     | 82%       | 33  |
+| 8      | 12          | 26.58     | 78%       | 37  |
+| 8      | 8           | 54.19     | 90%       | 18  |
+| 8      | 16          | 7.93      | 55%       | 126 |
+| 8      | 14          | 16.04     | 67%       | 62  |
+| 9      | 16          | 11.70     | 61%       | 85  |
+| 9      | 18          | 5.99      | 52%       | 166 |
+| 9      | 17          | 7.65      | 54%       | 130 |
+| 10     | 20          | 4.33      | 50%       | 230 |
+| 10     | 16          | 14.28     | 67%       | 70  |
+| 4      | 4           | 140.35    | 96%       | 7   |
+| 4      | 8           | 33.02     | 72%       | 30  |
+| 4      | 10          | 23.63     | 67%       | 42  |
+---
+
+# References
+
+1. [Visual LSH](https://randorithms.com/2019/09/19/Visual-LSH.html)
+2. [Locality Sensitive Hashing (LSH): The Illustrated Guide](https://www.pinecone.io/learn/series/faiss/locality-sensitive-hashing/)
+3. [Random Projection for Locality Sensitive Hashing](https://www.pinecone.io/learn/series/faiss/locality-sensitive-hashing-random-projection/)
+4. [Sparse Implementation](https://github.com/pinecone-io/examples/tree/main/learn/search/faiss-ebook/locality-sensitive-hashing-traditional)
 5. [Random Projections](https://github.com/pinecone-io/examples/tree/main/learn/search/faiss-ebook/locality-sensitive-hashing-random-projection)
 
 ---
 
-## **Observations**
+# Observations
 
-**a)** Printing canditate set size gave me - **10k for 10k dataset, 100k .., 1m..** -> issue pointed by this is **LSH behaving at best equal to brute force.** Why would all vectors land in same bucket.  
+## a) Degenerate Hyperplanes
 
-`normal[k] = Random::get(-0.05f, 0.05f);`
+While debugging, I printed the **candidate set size** and observed:
 
-This made **hyperplanes degernate** hence all vectors ended up to be at same side of all plane, ence same hash for all.  
+```
+10K dataset  → ~10K candidates
+100K dataset → ~100K candidates
+1M dataset   → ~1M candidates
+```
 
-*Soln* spread planes - `(0, 1)` or experimnet with other vals.  
+This indicated that **LSH was behaving like brute force search**.
+
+### Root Cause
+
+Hyperplanes were generated using:
+
+```cpp
+normal[k] = Random::get(-0.05f, 0.05f);
+```
+
+This caused **degenerate hyperplanes**.
+
+Since all projection values were extremely small:
+
+* Hyperplanes were almost flat
+* All vectors fell on the **same side of the planes**
+* Every vector produced **the same hash**
+
+Result:
+
+```
+All vectors landed in the same bucket
+```
+
+### Solution
+
+Increase hyperplane spread.
+
+Example:
+
+```
+Random(0,1)
+```
+
+or experiment with other wider ranges.
 
 ---
 
-**b)** Still scaling linearly. Print candidate set size again — **800 average at 10K, 8000 at 100K, 100K at 1M. Exactly proportional.** Basically our hash is unable to different finely.  
+# b) Candidate Set Still Scaling Linearly
 
-*Soln:* **Increase no of planes per table.**
+Even after fixing the plane distribution, candidate size behaved as:
+
+```
+10K dataset  → ~800 candidates
+100K dataset → ~8000 candidates
+1M dataset   → ~100000 candidates
+```
+
+This shows **linear growth with dataset size**, meaning the hash was still **not discriminative enough**.
+
+### Solution
+
+Increase the **number of projections per table**.
+
+More projections:
+
+* increases hash selectivity
+* reduces bucket size
+* reduces candidate set
 
 ---
 
-**c)** Low recall, this is solved by relation from artcile above. Hence prpvides a tradeoff between **Recall and QPs.** Need to find a balance.  
+# c) Recall vs QPS Tradeoff
 
-Acc to my debugs, **table 8-10 and proj 10-12 proved as middle ground.**
+Increasing projections improves **selectivity**, but also:
+
+* reduces recall
+* reduces candidate overlap across tables
+
+Therefore we get the classic LSH tradeoff:
+
+```
+More projections → higher speed, lower recall
+Fewer projections → higher recall, slower search
+```
+
+Based on experiments:
+
+```
+Tables: 8–10
+Projections: 10–12
+```
+
+gave the best **middle ground between recall and QPS**.

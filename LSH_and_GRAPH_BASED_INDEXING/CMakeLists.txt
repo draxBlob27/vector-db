@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(VectorDB_LSH)
+project(VectorDB_Indexes)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -22,5 +22,19 @@ target_sources(LSH_Index
             "LSH/include/LSH_Index.hpp"
 )
 
-# add_subdirectory(test)
+add_library(NSW_Index)
+target_sources(NSW_Index
+    PRIVATE
+        "NSW/src/NSW_Index.cpp"
+    
+    PUBLIC
+        FILE_SET HEADERS
+        BASE_DIRS
+            "NSW/include"
+            "../utils"
+        FILES
+            "NSW/include/NSW_Index.hpp"
+)
+
+add_subdirectory(test)
 add_subdirectory(bench)

@@ -183,7 +183,7 @@ void LSHIndex::save(const std::string& filename) {
         |----------------------------------------------|
     */
 
-    std::ofstream outf("LSH_and_GRAPH_BASED_INDEXING/LSH/persist/" + filename, std::ios::binary);
+    std::ofstream outf(filename, std::ios::binary);
     Serializer_De::file_exists(filename, outf);
     
     using namespace std::string_literals;
@@ -215,7 +215,7 @@ void LSHIndex::save(const std::string& filename) {
 }
 
 void LSHIndex::load(const std::string& filename) {
-    std::ifstream inf("LSH_and_GRAPH_BASED_INDEXING/LSH/persist/" + filename, std::ios::binary);
+    std::ifstream inf(filename, std::ios::binary);
     Serializer_De::file_exists(filename, inf);
     
     using namespace std::string_literals;
@@ -229,12 +229,23 @@ void LSHIndex::load(const std::string& filename) {
     Serializer_De::corruption_check(version, s_version);
 
     Serializer_De::stream_read(m_num_tables, "File corrupted\n"s, inf);
+    // std::cout << "tables: " << m_num_tables << "\n";
     Serializer_De::stream_read(m_num_projections, "File corrupted\n"s, inf);
+    // std::cout << "projections: " << m_num_projections << "\n";
     Serializer_De::stream_read(m_dimension, "File corrupted\n"s, inf);
+    // std::cout << "dimension: " << m_dimension << "\n";
     Serializer_De::stream_read(m_count, "File corrupted\n"s, inf);
+    // std::cout << "count: " << m_count << "\n";
 
     m_hash_tables.resize(m_num_tables);
-    m_hyperplanes.resize(m_num_tables, std::vector<Vector>(m_num_projections));
+    m_hyperplanes.resize(m_num_tables);
+
+    for (auto& plane: m_hyperplanes) {
+        plane.resize(m_num_projections);
+        for (auto& v : plane) {
+            v.data.resize(m_dimension);
+        }
+    }
 
     for (std::size_t i{0}; i < m_num_tables; i++) {
         for (std::size_t j{0}; j < m_num_projections; j++) {
@@ -253,7 +264,6 @@ void LSHIndex::load(const std::string& filename) {
 
             std::size_t collisions;
             Serializer_De::stream_read(collisions, "File corrupted\n"s, inf);
-
             m_hash_tables[i][hash].resize(collisions);
             Serializer_De::stream_read(m_hash_tables[i][hash], "File corrupted\n"s, inf);
         }
