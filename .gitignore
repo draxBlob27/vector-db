@@ -7,3 +7,10 @@ tessstt.cpp
 sift*
 *.gz
 .venv
+!CMakeLists.txt
+*.pdf
+*.ipynb
+persist
+build*
+db*
+

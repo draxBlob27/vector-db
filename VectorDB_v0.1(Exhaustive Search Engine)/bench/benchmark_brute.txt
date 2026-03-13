@@ -1,3 +1,0 @@
-MsPQ for 10000 vectors : 1.59814 Milliseconds
-Recall@10 for 10000 vectors : 100%
-QPS for 10000 vectors : 625 queries
