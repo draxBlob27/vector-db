@@ -11,4 +11,5 @@ sift*
 *.pdf
 *.ipynb
 persist
+build/*
 
