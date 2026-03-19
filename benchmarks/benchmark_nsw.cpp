@@ -11,7 +11,7 @@ int main() {
     NSW_Index nsw_10K{M, efConstruction};
         Timer t{};
     
-        std::string dir = "/home/sp27022003/vector-db/sift10K/";
+        std::string dir = "/home/sp27022003/vector-db/sift1M/";
             
         auto sift_res = Importer::import_sift1m(dir + "sift_base.fvecs", dir + "sift_query.fvecs", dir + "sift_groundtruth.ivecs");
     
@@ -40,15 +40,15 @@ int main() {
     
         std::size_t num_queries = 100;
         auto calc_qps{[&](const NSW_Index& nsw) {
-            t.reset();
             int intersection{0};
-            int my_k{10};
-    
+            std::uint32_t my_k{10};
+            double dur = 0;
             for (std::size_t i{0}; i < num_queries; i++) {
+                t.reset();
                 auto res = nsw.query(queries[i], my_k, efSearch); //impilcit conversion fo float query to Vector query
-                
-                for (size_t j = 0; j < my_k; j++) {
-                    for (size_t k = 0; k < my_k; k++) {
+                dur += t.elapsed();
+                for (std::uint32_t j = 0; j < my_k; j++) {
+                    for (std::uint32_t k = 0; k < my_k; k++) {
                         if (res[j].first == truths[i][k]) {
                             intersection++;
                             break;
@@ -57,7 +57,7 @@ int main() {
                 }
             }
     
-            double dur = t.elapsed() / num_queries;
+            dur = dur / num_queries;
             outf << "MsPQ for " << nsw.getSize() << " vectors : " << dur << " Milliseconds\n";
             outf << "Recall@10 for " << nsw.getSize() << " vectors : " << intersection * 100 / (num_queries * my_k) << "%\n";
     
@@ -74,114 +74,31 @@ int main() {
 
 /*
 Parameters(M = 16, efConst = 200)
-Build time: 4.14154 secs 
+Build time: 1195.29 secs 
 efSearch = 10
-MsPQ for 10000 vectors : 0.0761788 Milliseconds
-Recall@10 for 10000 vectors : 50%
-QPS for 10000 vectors : 13127 queries
-efSearch = 25
-MsPQ for 10000 vectors : 0.1233 Milliseconds
-Recall@10 for 10000 vectors : 58%
-QPS for 10000 vectors : 8110 queries
-efSearch = 50
-MsPQ for 10000 vectors : 0.196022 Milliseconds
-Recall@10 for 10000 vectors : 62%
-QPS for 10000 vectors : 5101 queries
-efSearch = 100
-MsPQ for 10000 vectors : 0.34411 Milliseconds
-Recall@10 for 10000 vectors : 65%
-QPS for 10000 vectors : 2906 queries
-efSearch = 200
-MsPQ for 10000 vectors : 0.548516 Milliseconds
-Recall@10 for 10000 vectors : 67%
-QPS for 10000 vectors : 1823 queries
-efSearch = 500
-MsPQ for 10000 vectors : 1.10956 Milliseconds
-Recall@10 for 10000 vectors : 70%
-QPS for 10000 vectors : 901 queries
-
-Parameters(M = 16, efConst = 200)
-Build time: 3.81925 secs 
-efSearch = 10
-MsPQ for 10000 vectors : 0.0683027 Milliseconds
-Recall@10 for 10000 vectors : 50%
-QPS for 10000 vectors : 14640 queries
-efSearch = 25
-MsPQ for 10000 vectors : 0.10936 Milliseconds
-Recall@10 for 10000 vectors : 58%
-QPS for 10000 vectors : 9144 queries
-efSearch = 50
-MsPQ for 10000 vectors : 0.172735 Milliseconds
-Recall@10 for 10000 vectors : 62%
-QPS for 10000 vectors : 5789 queries
-efSearch = 100
-MsPQ for 10000 vectors : 0.286926 Milliseconds
-Recall@10 for 10000 vectors : 65%
-QPS for 10000 vectors : 3485 queries
-efSearch = 200
-MsPQ for 10000 vectors : 0.486213 Milliseconds
-Recall@10 for 10000 vectors : 67%
-QPS for 10000 vectors : 2056 queries
-efSearch = 500
-MsPQ for 10000 vectors : 0.959206 Milliseconds
-Recall@10 for 10000 vectors : 70%
-QPS for 10000 vectors : 1042 queries
-
-
-Parameters(M = 16, efConst = 200)
-Build time: 1433.71 secs 
-efSearch = 10
-MsPQ for 1000000 vectors : 0.23625 Milliseconds
+MsPQ for 1000000 vectors : 0.205985 Milliseconds
 Recall@10 for 1000000 vectors : 53%
-QPS for 1000000 vectors : 4232 queries
+QPS for 1000000 vectors : 4854 queries
 efSearch = 25
-MsPQ for 1000000 vectors : 0.373767 Milliseconds
-Recall@10 for 1000000 vectors : 73%
-QPS for 1000000 vectors : 2675 queries
+MsPQ for 1000000 vectors : 0.319483 Milliseconds
+Recall@10 for 1000000 vectors : 72%
+QPS for 1000000 vectors : 3130 queries
 efSearch = 50
-MsPQ for 1000000 vectors : 0.591347 Milliseconds
-Recall@10 for 1000000 vectors : 85%
-QPS for 1000000 vectors : 1691 queries
+MsPQ for 1000000 vectors : 0.49865 Milliseconds
+Recall@10 for 1000000 vectors : 84%
+QPS for 1000000 vectors : 2005 queries
 efSearch = 100
-MsPQ for 1000000 vectors : 0.923099 Milliseconds
-Recall@10 for 1000000 vectors : 92%
-QPS for 1000000 vectors : 1083 queries
+MsPQ for 1000000 vectors : 0.788994 Milliseconds
+Recall@10 for 1000000 vectors : 93%
+QPS for 1000000 vectors : 1267 queries
 efSearch = 200
-MsPQ for 1000000 vectors : 1.57705 Milliseconds
-Recall@10 for 1000000 vectors : 96%
-QPS for 1000000 vectors : 634 queries
+MsPQ for 1000000 vectors : 1.38755 Milliseconds
+Recall@10 for 1000000 vectors : 97%
+QPS for 1000000 vectors : 720 queries
 efSearch = 500
-MsPQ for 1000000 vectors : 3.37052 Milliseconds
-Recall@10 for 1000000 vectors : 98%
-QPS for 1000000 vectors : 296 queries
-
----without heuristic
-Parameters(M = 16, efConst = 200)
-Build time: 4.58957 secs 
-efSearch = 10
-MsPQ for 10000 vectors : 0.0878133 Milliseconds
-Recall@10 for 10000 vectors : 71%
-QPS for 10000 vectors : 11387 queries
-efSearch = 25
-MsPQ for 10000 vectors : 0.150731 Milliseconds
-Recall@10 for 10000 vectors : 89%
-QPS for 10000 vectors : 6634 queries
-efSearch = 50
-MsPQ for 10000 vectors : 0.232463 Milliseconds
-Recall@10 for 10000 vectors : 95%
-QPS for 10000 vectors : 4301 queries
-efSearch = 100
-MsPQ for 10000 vectors : 0.367467 Milliseconds
-Recall@10 for 10000 vectors : 98%
-QPS for 10000 vectors : 2721 queries
-efSearch = 200
-MsPQ for 10000 vectors : 0.600013 Milliseconds
-Recall@10 for 10000 vectors : 98%
-QPS for 10000 vectors : 1666 queries
-efSearch = 500
-MsPQ for 10000 vectors : 1.17401 Milliseconds
-Recall@10 for 10000 vectors : 98%
-QPS for 10000 vectors : 851 queries
+MsPQ for 1000000 vectors : 2.97448 Milliseconds
+Recall@10 for 1000000 vectors : 99%
+QPS for 1000000 vectors : 336 queries
 
 
 */

@@ -75,7 +75,7 @@ Result<Unit, DBError> VectorStore::remove(std::uint64_t id) {
 
 Result<std::vector<float>, DBError> VectorStore::get(std::uint64_t id) const {
     if (m_id_set.count(id)) {
-        for (const auto it : m_vectors) {
+        for (const auto& it : m_vectors) {
             if (it.first == id) {
                 return Ok<std::vector<float>>{it.second.data};
             }
@@ -93,18 +93,6 @@ Result<std::vector<std::pair<std::uint64_t, float>>, DBError> VectorStore::query
     }
 
     std::vector<std::pair<std::uint64_t, float>> res; //handles if DB size is less than k.
-
-    auto compute_q_norm{[&]() {
-        float norm_data = 0.0f;
-
-        for (const auto& it : q_vector.data) {
-            norm_data += (it * it);
-        }
-
-        return norm_data;
-    }};
-
-    float q_norm = compute_q_norm();
 
     switch (metric)
     {

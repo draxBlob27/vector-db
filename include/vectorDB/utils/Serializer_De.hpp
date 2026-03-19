@@ -12,7 +12,7 @@ class Serializer_De {
         if (stream.bad() || stream.fail()) {
             throw InsufficientSpaceError(e_msg);
         }
-    };
+    }
 public:
     static inline void file_exists(const std::string& filename, std::ofstream& stream) {
         if (!stream) {

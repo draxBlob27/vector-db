@@ -85,7 +85,6 @@ std::vector<std::pair<std::uint64_t, float>> LSHIndex::query(const Vector& query
         hash_vals[i] =  hash;//hash val of query with this hyperplane
         
         auto got = m_hash_tables[i].find(hash);
-        int cnt{0};
         if (got != m_hash_tables[i].end()) {
             for (const auto& it : got->second) { //extracting collided vectors with same hash val
                 // auto [_, inserted] = st.insert(it); //de-duplicating
@@ -103,7 +102,7 @@ std::vector<std::pair<std::uint64_t, float>> LSHIndex::query(const Vector& query
         // }
     }
 
-    int j{0};
+    std::uint32_t j{0};
     while (st.size() < k && j < m_num_projections) {
         for (std::uint32_t i{0}; i < m_num_tables; i++) {
             std::uint64_t hash = hash_vals[i];

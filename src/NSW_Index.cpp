@@ -11,9 +11,11 @@ std::vector<std::pair<std::uint64_t, float>> NSW_Index::search_layer(const Vecto
         //contains efclose vectors, with top as farthest of close vector till now
         std::priority_queue<std::pair<float, std::uint64_t>> found_closest;
 
-        std::unordered_set<std::uint64_t> vis;
+        // std::unordered_set<std::uint64_t> vis;
+        std::vector<int> vis(NSW_Index::m_num_nodes);
 
-        vis.insert(m_entry_point);
+        // vis.insert(m_entry_point);
+        vis[m_entry_point] = 1;
         candidates.push({calc_distance<Metric::L2>(m_nodes[m_entry_point].vector, v), m_entry_point});
         found_closest.push({calc_distance<Metric::L2>(m_nodes[m_entry_point].vector, v), m_entry_point});
 
@@ -26,11 +28,14 @@ std::vector<std::pair<std::uint64_t, float>> NSW_Index::search_layer(const Vecto
             }
 
             for (const auto& [__, nei] : m_nodes[nodeId].neighbors) {
-                auto [_, inserted] = vis.insert(nei);
+                // auto [_, inserted] = vis.insert(nei);
 
-                if (!inserted) {
+                // if (!inserted) {
+                if (vis[nei]) {
                     continue;
                 }
+
+                vis[nei] = 1;
 
                 float dist{calc_distance<Metric::L2>(m_nodes[nei].vector, v)};
                 if (found_closest.top().first > dist || static_cast<uint32_t>(found_closest.size()) < ef) {
@@ -45,10 +50,10 @@ std::vector<std::pair<std::uint64_t, float>> NSW_Index::search_layer(const Vecto
             }
         }
 
-        // std::uint32_t sz = std::min(static_cast<uint32_t>(found_closest.size()), m_M);
+        std::uint32_t sz = std::min(static_cast<uint32_t>(found_closest.size()), m_M);
         
         std::vector<std::pair<std::uint64_t, float>> best;
-        // best.reserve(sz);
+        best.reserve(sz);
         while (!found_closest.empty()) {
             if (static_cast<uint32_t>(found_closest.size()) <= M) {
                 best.push_back({found_closest.top().second, found_closest.top().first});

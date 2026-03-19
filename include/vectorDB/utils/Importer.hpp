@@ -48,7 +48,7 @@ public:
         }
 
         std::string line;
-        int dims = 100;
+        std::uint32_t dims = 100;
         
         while (std::getline(inf, line)) {//getline works as flag for error as well as input for lines
             const char *pos = line.data(), *end = line.data() + line.size();
@@ -78,7 +78,7 @@ public:
                 }
             }
 
-            if (emb.data.size() == dims) {
+            if (static_cast<std::uint32_t>(emb.data.size()) == dims) {
                 mr.word_to_id.emplace(word, id);
                 mr.id_to_word.emplace(id, word);
 

@@ -13,4 +13,6 @@ sift*
 persist
 build*
 db*
+perf*
+flags
 

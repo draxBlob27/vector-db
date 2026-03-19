@@ -101,9 +101,11 @@ class Result<Unit, ErrT> {
         return std::get<Err<ErrT>>(variant).copy_value();
     }
     
-    Unit&& take_ok_value() {
-        return Unit{};
-    }
+    Unit&& take_ok_value() = delete;
+    // {
+    //     return Unit{};
+    // }
+
     ErrT&& take_err_value() {
         return std::get<Err<ErrT>>(variant).take_value();
     }

@@ -10,11 +10,14 @@ int main() {
     // VectorStore vdb_1M{};
     Timer t{};
 
-    auto sift_res{Importer::import_sift1m("/home/sp27022003/vector-db/sift10K/siftsmall_base.fvecs", "/home/sp27022003/vector-db/sift10K/siftsmall_query.fvecs", "/home/sp27022003/vector-db/sift10K/siftsmall_groundtruth.ivecs", 10000)};
+    std::string dir = "/home/sp27022003/vector-db/sift10K/";
+        
+    auto sift_res = Importer::import_sift1m(dir + "sift_base.fvecs", dir + "sift_query.fvecs", dir + "sift_groundtruth.ivecs").take_ok_value();
+
 
     auto fill_db{[&](VectorStore& vdb) {
-        std::vector<Vector> vectors{sift_res.ok_value().vectors};
-        std::vector<std::uint64_t> ids{sift_res.ok_value().ids};
+        std::vector<Vector> vectors{std::move(sift_res.vectors)};
+        std::vector<std::uint64_t> ids{std::move(sift_res.ids)};
 
         for (std::size_t i{0}; i < vectors.size(); i++) {
             vdb.insert(ids[i], std::move(vectors[i]));
@@ -29,12 +32,12 @@ int main() {
     // sift_res = Importer::import_sift1m("/home/sp27022003/vector-db/sift/sift_base.fvecs", "/home/sp27022003/vector-db/sift/sift_query.fvecs", "/home/sp27022003/vector-db/sift/sift_groundtruth.ivecs", 1'000'000);
     // fill_db(vdb_1M);
 
-    std::vector<std::vector<float>> queries{sift_res.ok_value().queries};
-    std::vector<std::vector<std::uint32_t>> truths{sift_res.ok_value().truths};
-    std::vector<std::uint32_t> truth_k{sift_res.ok_value().truth_k};
+    const std::vector<std::vector<float>>& queries{sift_res.queries};
+    const std::vector<std::vector<std::uint32_t>>& truths{sift_res.truths};
+    const std::vector<std::uint32_t>& truth_k{sift_res.truth_k};
 
     std::size_t num_queries = queries.size();
-    std::ofstream outf{"/home/sp27022003/vector-db/VectorDB_v0.1(Exhaustive Search Engine)/bench/benchmark_brute.txt"};
+    std::ofstream outf{"/home/sp27022003/vector-db/benchmarks/benchmark_brute.txt", std::ios::app};
 
     auto calc_qps{[&](const VectorStore& vdb) {
         t.reset();
@@ -46,7 +49,7 @@ int main() {
             k_sz += res.size();
             for (const auto& [id, _] : res) {
                 // std::cout << id << "\n";
-                for (int j{0}; j < res.size(); j++) {
+                for (std::size_t j{0}; j < res.size(); j++) {
                     // std::cout << truths[i][j] << " ";
                     if (truths[i][j] == id) {
                         intersection++;
@@ -60,8 +63,8 @@ int main() {
         double dur = t.elapsed() / num_queries;
         int sz = vdb.size().ok_value();
 
-        std::cout << "Intersection: " << intersection << "\n";
-        std::cout << "Total: " << k_sz << "\n";
+        // std::cout << "Intersection: " << intersection << "\n";
+        // std::cout << "Total: " << k_sz << "\n";
 
         outf << "MsPQ for " << sz << " vectors : " << dur << " Milliseconds\n";
 

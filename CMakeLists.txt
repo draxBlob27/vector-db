@@ -3,7 +3,11 @@ project(vectorDB)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_STANDARD_EXTENSTIONS OFF)
+# set(CMAKE_CXX_STANDARD_EXTENSTIONS OFF)
+
+add_compile_options(-O3 -std=c++20 -pthread -Wall -pedantic -fno-omit-frame-pointer
+# -fno-exception -fno-rtti
+)
 
 add_library(Archive_lib)
 target_sources(Archive_lib

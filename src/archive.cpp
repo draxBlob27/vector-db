@@ -69,7 +69,7 @@ void VectorArchive::save(const std::string &file_path, const std::vector<std::ve
         }
 
         std::uint32_t beg{staged_data * dimension};
-        for (int j{0}; j < dimension; j++) {
+        for (std::uint32_t j{0}; j < dimension; j++) {
             buffer[beg + j] = data[i][j];
         }
 
@@ -103,7 +103,7 @@ std::vector<std::vector<double>> VectorArchive::load(const std::string &file_pat
     std::uint32_t calc_crc_32_header{0xFFFFFFFF};
     std::uint32_t magic_bytes;
     inf.read(reinterpret_cast<char *>(&magic_bytes), sizeof(std::uint32_t));
-    if (inf.fail() | inf.bad()) {
+    if (inf.fail() || inf.bad()) {
         throw ArchiveError("Could not read file.");
     }
     if (magic_bytes != s_magic_bytes)
@@ -112,7 +112,7 @@ std::vector<std::vector<double>> VectorArchive::load(const std::string &file_pat
 
     std::uint32_t version;
     inf.read(reinterpret_cast<char *>(&version), sizeof(std::uint32_t));
-    if (inf.fail() | inf.bad()) {
+    if (inf.fail() || inf.bad()) {
         throw ArchiveError("Could not read file.");
     }
     if (version != s_version)
@@ -121,21 +121,21 @@ std::vector<std::vector<double>> VectorArchive::load(const std::string &file_pat
 
     std::uint32_t dimension;
     inf.read(reinterpret_cast<char *>(&dimension), sizeof(std::uint32_t));
-    if (inf.fail() | inf.bad()) {
+    if (inf.fail() || inf.bad()) {
         throw ArchiveError("Could not read file.");
     }
     update_crc(calc_crc_32_header, &dimension, sizeof(dimension));
 
     std::uint64_t count;
     inf.read(reinterpret_cast<char *>(&count), sizeof(std::uint64_t));
-    if (inf.fail() | inf.bad()) {
+    if (inf.fail() || inf.bad()) {
         throw ArchiveError("Could not read file.");
     }
     update_crc(calc_crc_32_header, &count, sizeof(count));
 
     std::uint32_t crc_32_header;
     inf.read(reinterpret_cast<char*>(&crc_32_header), sizeof(crc_32_header));
-    if (inf.fail() | inf.bad()) {
+    if (inf.fail() || inf.bad()) {
         throw ArchiveError("Could not read file.");
     }
 
@@ -152,7 +152,7 @@ std::vector<std::vector<double>> VectorArchive::load(const std::string &file_pat
     {
         unsigned char *d_ptr = reinterpret_cast<unsigned char *>(&data[i][0]);
         inf.read(reinterpret_cast<char*>(d_ptr), dimension * sizeof(double));
-        if (inf.fail() | inf.bad()) {
+        if (inf.fail() || inf.bad()) {
             throw ArchiveError("Could not read file.");
         }
 
@@ -166,7 +166,7 @@ std::vector<std::vector<double>> VectorArchive::load(const std::string &file_pat
 
     std::uint32_t crc_32_data;
     inf.read(reinterpret_cast<char *>(&crc_32_data), sizeof(std::uint32_t));
-    if (inf.fail() | inf.bad()) {
+    if (inf.fail() || inf.bad()) {
         throw ArchiveError("Could not read file.");
     }
 
@@ -188,12 +188,12 @@ VectorArchive::FileInfo VectorArchive::info(const std::string &file_path)
     inf.seekg(2 * sizeof(std::uint32_t)); //magic bytes and version
 
     inf.read(reinterpret_cast<char *>(&f.dim), sizeof(std::uint32_t)); //read dimension
-    if (inf.fail() | inf.bad()) {
+    if (inf.fail() || inf.bad()) {
         throw ArchiveError("Could not read file.");
     }
 
     inf.read(reinterpret_cast<char *>(&f.count), sizeof(std::uint64_t)); //read count
-    if (inf.fail() | inf.bad()) {
+    if (inf.fail() || inf.bad()) {
         throw ArchiveError("Could not read file.");
     }
 
@@ -212,7 +212,7 @@ bool VectorArchive::verify(const std::string &file_path)
 
     std::uint32_t magic_bytes;
     inf.read(reinterpret_cast<char *>(&magic_bytes), sizeof(std::uint32_t));
-    if (inf.fail() | inf.bad()) {
+    if (inf.fail() || inf.bad()) {
         throw ArchiveError("Could not read file.");
     }
     if (magic_bytes != s_magic_bytes)
@@ -223,7 +223,7 @@ bool VectorArchive::verify(const std::string &file_path)
 
     std::uint32_t version;
     inf.read(reinterpret_cast<char *>(&version), sizeof(std::uint32_t));
-    if (inf.fail() | inf.bad()) {
+    if (inf.fail() || inf.bad()) {
         throw ArchiveError("Could not read file.");
     }
     if (version != s_version)
@@ -234,14 +234,14 @@ bool VectorArchive::verify(const std::string &file_path)
 
     std::uint32_t dimension;
     inf.read(reinterpret_cast<char *>(&dimension), sizeof(std::uint32_t));
-    if (inf.fail() | inf.bad()) {
+    if (inf.fail() || inf.bad()) {
         throw ArchiveError("Could not read file.");
     }
     update_crc(calc_crc_32_header, &dimension, sizeof(dimension));
 
     std::uint64_t count;
     inf.read(reinterpret_cast<char *>(&count), sizeof(std::uint64_t));
-    if (inf.fail() | inf.bad()) {
+    if (inf.fail() || inf.bad()) {
         throw ArchiveError("Could not read file.");
     }
     update_crc(calc_crc_32_header, &count, sizeof(count));
@@ -249,7 +249,7 @@ bool VectorArchive::verify(const std::string &file_path)
 
     std::uint32_t crc_32_header;
     inf.read(reinterpret_cast<char*>(&crc_32_header), sizeof(crc_32_header));
-    if (inf.fail() | inf.bad()) {
+    if (inf.fail() || inf.bad()) {
         throw ArchiveError("Could not read file.");
     }
     if (crc_32_header != calc_crc_32_header) {
@@ -263,7 +263,7 @@ bool VectorArchive::verify(const std::string &file_path)
     {
         unsigned char *d_ptr = reinterpret_cast<unsigned char *>(&data[0]);
         inf.read(reinterpret_cast<char*>(d_ptr), dimension * sizeof(double));
-        if (inf.fail() | inf.bad()) {
+        if (inf.fail() || inf.bad()) {
             throw ArchiveError("Could not read file.");
         }
 
@@ -274,7 +274,7 @@ bool VectorArchive::verify(const std::string &file_path)
 
     std::uint32_t crc_32_data;
     inf.read(reinterpret_cast<char *>(&crc_32_data), sizeof(std::uint32_t));
-    if (inf.fail() | inf.bad()) {
+    if (inf.fail() || inf.bad()) {
         throw ArchiveError("Could not read file.");
     }
 
@@ -301,21 +301,21 @@ void VectorArchive::append(const std::string &file_path, const std::vector<std::
 
     std::uint32_t magic_bytes;
     iof.read(reinterpret_cast<char *>(&magic_bytes), sizeof(std::uint32_t));
-    if (iof.fail() | iof.bad()) {
+    if (iof.fail() || iof.bad()) {
         throw ArchiveError("Could not read file.");
     }
     update_crc(crc_32_header_update, &magic_bytes, sizeof(magic_bytes));
 
     std::uint32_t version;
     iof.read(reinterpret_cast<char *>(&version), sizeof(std::uint32_t));
-    if (iof.fail() | iof.bad()) {
+    if (iof.fail() || iof.bad()) {
         throw ArchiveError("Could not read file.");
     }
     update_crc(crc_32_header_update, &version, sizeof(version));
 
     std::uint32_t dimension;
     iof.read(reinterpret_cast<char *>(&dimension), sizeof(std::uint32_t)); //read dimension
-    if (iof.fail() | iof.bad()) {
+    if (iof.fail() || iof.bad()) {
         throw ArchiveError("Could not read file.");
     }
     if (dimension != append_dim)
@@ -326,13 +326,13 @@ void VectorArchive::append(const std::string &file_path, const std::vector<std::
 
     std::uint64_t count;
     iof.read(reinterpret_cast<char *>(&count), sizeof(std::uint64_t)); //read count
-    if (iof.fail() | iof.bad()) {
+    if (iof.fail() || iof.bad()) {
         throw ArchiveError("Could not read file.");
     }
     iof.seekg(-sizeof(std::uint64_t), std::ios::cur);
     const std::uint64_t new_count{count + append_count};
     iof.write(reinterpret_cast<const char *>(&new_count), sizeof(std::uint64_t));
-    if (iof.fail() | iof.bad()) {
+    if (iof.fail() || iof.bad()) {
         throw ArchiveError("Could not write in file.");
     }
     update_crc(crc_32_header_update, &new_count, sizeof(new_count));
@@ -340,7 +340,7 @@ void VectorArchive::append(const std::string &file_path, const std::vector<std::
     crc_32_header_update ^= 0xFFFFFFFF;
 
     iof.write(reinterpret_cast<char*>(&crc_32_header_update), sizeof(crc_32_header_update));
-    if (iof.fail() | iof.bad()) {
+    if (iof.fail() || iof.bad()) {
         throw ArchiveError("Could not write in file.");
     }
 
@@ -348,7 +348,7 @@ void VectorArchive::append(const std::string &file_path, const std::vector<std::
 
     std::uint32_t crc_32_data_update;
     iof.read(reinterpret_cast<char *>(&crc_32_data_update), sizeof(std::uint32_t));
-    if (iof.fail() | iof.bad()) {
+    if (iof.fail() || iof.bad()) {
         throw ArchiveError("Could not read file.");
     }
 
@@ -364,7 +364,7 @@ void VectorArchive::append(const std::string &file_path, const std::vector<std::
 
         const unsigned char *d_ptr{reinterpret_cast<const unsigned char *>(&data[i][0])};
         iof.write(reinterpret_cast<const char*>(d_ptr), dimension * sizeof(double));
-        if (iof.fail() | iof.bad()) {
+        if (iof.fail() || iof.bad()) {
             throw ArchiveError("Could not write in file.");
         }
 
@@ -374,7 +374,7 @@ void VectorArchive::append(const std::string &file_path, const std::vector<std::
     crc_32_data_update ^= 0xFFFFFFFF;
 
     iof.write(reinterpret_cast<char *>(&crc_32_data_update), sizeof(std::uint32_t));
-    if (iof.fail() | iof.bad()) {
+    if (iof.fail() || iof.bad()) {
         throw ArchiveError("Could not write in file.");
     }
 }
