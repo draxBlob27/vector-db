@@ -6,7 +6,7 @@ class NSW_test :public ::testing::Test {
 protected:
     inline static NSW_Index nsw{16};
     static void SetUpTestSuite() {
-        std::string dir = "/home/sp27022003/vector-db/sift10K/";
+        std::string dir = "/home/rohitfeb641/vector-db/sift10K/";
                 
         auto sift_res = Importer::import_sift1m(dir + "sift_base.fvecs", dir + "sift_query.fvecs", dir + "sift_groundtruth.ivecs");
     
@@ -22,11 +22,11 @@ protected:
 };
 
 TEST_F(NSW_test, save_test) {
-    ASSERT_NO_THROW(nsw.save("/home/sp27022003/vector-db/db/LSH/nsw_" + std::to_string(NSW_Index::getIndexNumber()) + ".bin"));
+    ASSERT_NO_THROW(nsw.save("/home/rohitfeb641/vector-db/db/LSH/nsw_" + std::to_string(NSW_Index::getIndexNumber()) + ".bin"));
 }
 
 TEST_F(NSW_test, load_test) {
     NSW_Index check_load{};
-    ASSERT_NO_THROW(check_load.load("/home/sp27022003/vector-db/db/LSH/nsw_" + std::to_string(NSW_Index::getIndexNumber()) + ".bin"));
+    ASSERT_NO_THROW(check_load.load("/home/rohitfeb641/vector-db/db/LSH/nsw_" + std::to_string(NSW_Index::getIndexNumber()) + ".bin"));
     ASSERT_EQ(check_load, nsw);
 }

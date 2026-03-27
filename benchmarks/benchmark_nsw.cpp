@@ -11,14 +11,14 @@ int main() {
     NSW_Index nsw_10K{M, efConstruction};
         Timer t{};
     
-        std::string dir = "/home/sp27022003/vector-db/sift1M/";
+        std::string dir = "/home/rohitfeb641/vector-db/sift1M/";
             
         auto sift_res = Importer::import_sift1m(dir + "sift_base.fvecs", dir + "sift_query.fvecs", dir + "sift_groundtruth.ivecs");
     
         const std::vector<std::uint64_t>& ids{sift_res.ok_value().ids};
         const std::vector<Vector>& vectors{sift_res.ok_value().vectors};
     
-        std::ofstream outf{"/home/sp27022003/vector-db/benchmarks/benchmark_nsw.txt", std::ios::app};
+        std::ofstream outf{"/home/rohitfeb641/vector-db/benchmarks/benchmark_nsw.txt", std::ios::app};
     
         outf << "Parameters(M = " << M << ", efConst = " << efConstruction << ")\n";
     

@@ -12,6 +12,8 @@
 #include <unordered_map>
 #include <variant>
 #include <vector>
+#include <shared_mutex>
+#include <mutex>
 #include "utils/Vector.hpp"
 #include "utils/Metric.hpp"
 #include "utils/Result.hpp"
@@ -38,12 +40,13 @@ struct Info {
     std::uint64_t bytes;
 };
 
-class VectorStore {
+class ThreadSafeVectorStore {
 private:
     std::vector<std::pair<uint64_t, Vector>> m_vectors;
     std::unordered_set<std::uint64_t> m_id_set;
     static const inline std::uint32_t s_magic_bytes{0x56454344};
     static const inline std::uint32_t s_version{1};
+    mutable std::shared_mutex entry_mutex;
 
 public:
     Result<Unit, DBError> insert(std::uint64_t id, Vector i_vector);
@@ -59,6 +62,7 @@ public:
     Result<Unit, DBError> load(const std::string& filename);
 
     Result<std::uint64_t, DBError> size() const {
+        std::unique_lock<std::shared_mutex> lk{entry_mutex}; //locks write mutex, only single writer(1 writer, 0 reader) is allowed.
         if (m_vectors.empty()) {
             return Err<DBError>{DBError::DataBaseEmptyError};
         }
@@ -67,6 +71,7 @@ public:
     }
 
     Result<Info, DBError> info() const {
+        std::unique_lock<std::shared_mutex> lk{entry_mutex}; //locks write mutex, only single writer(1 writer, 0 reader) is allowed.
         if (m_vectors.empty()) {
             return Err<DBError>{DBError::DataBaseEmptyError};
         }
@@ -79,6 +84,7 @@ public:
     }
 
     Result<std::uint64_t, DBError> dimensions() const {
+        std::unique_lock<std::shared_mutex> lk{entry_mutex}; //locks write mutex, only single writer(1 writer, 0 reader) is allowed.
         if (m_vectors.empty()) {
             return Err<DBError>{DBError::DataBaseEmptyError};
         }
@@ -86,4 +92,4 @@ public:
         return Ok{static_cast<std::uint64_t>(m_vectors[0].second.data.size())};
     }
 };
-#endif //VECTORDB_HPP
+#endif

@@ -259,3 +259,7 @@ After introducing heuristic pruning, the following effects were observed:
 * **Improved recall at high-recall operating points**
 
 This indicates that heuristic neighbor selection not only improves **graph navigability**, but also leads to a **better balanced graph structure**, reducing unnecessary edges while preserving important long-range connections.
+
+# Profiling my code:
+* Revealed 20% of CPU time was in inserting to unordered set in my NSW build operation.
+* Removed unonordered set and implemented a vector. Unordered set was used earlier for convenience.

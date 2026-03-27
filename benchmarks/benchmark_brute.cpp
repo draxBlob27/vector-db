@@ -10,7 +10,7 @@ int main() {
     // VectorStore vdb_1M{};
     Timer t{};
 
-    std::string dir = "/home/sp27022003/vector-db/sift10K/";
+    std::string dir = "/home/rohitfeb641/vector-db/sift10K/";
         
     auto sift_res = Importer::import_sift1m(dir + "sift_base.fvecs", dir + "sift_query.fvecs", dir + "sift_groundtruth.ivecs").take_ok_value();
 
@@ -26,10 +26,10 @@ int main() {
 
     fill_db(vdb_10K);
 
-    // sift_res = Importer::import_sift1m("/home/sp27022003/vector-db/sift/sift_base.fvecs", "/home/sp27022003/vector-db/sift/sift_query.fvecs", "/home/sp27022003/vector-db/sift/sift_groundtruth.ivecs", 1'00'000);
+    // sift_res = Importer::import_sift1m("/home/rohitfeb641/vector-db/sift/sift_base.fvecs", "/home/rohitfeb641/vector-db/sift/sift_query.fvecs", "/home/rohitfeb641/vector-db/sift/sift_groundtruth.ivecs", 1'00'000);
     // fill_db(vdb_100K);
 
-    // sift_res = Importer::import_sift1m("/home/sp27022003/vector-db/sift/sift_base.fvecs", "/home/sp27022003/vector-db/sift/sift_query.fvecs", "/home/sp27022003/vector-db/sift/sift_groundtruth.ivecs", 1'000'000);
+    // sift_res = Importer::import_sift1m("/home/rohitfeb641/vector-db/sift/sift_base.fvecs", "/home/rohitfeb641/vector-db/sift/sift_query.fvecs", "/home/rohitfeb641/vector-db/sift/sift_groundtruth.ivecs", 1'000'000);
     // fill_db(vdb_1M);
 
     const std::vector<std::vector<float>>& queries{sift_res.queries};
@@ -37,7 +37,7 @@ int main() {
     const std::vector<std::uint32_t>& truth_k{sift_res.truth_k};
 
     std::size_t num_queries = queries.size();
-    std::ofstream outf{"/home/sp27022003/vector-db/benchmarks/benchmark_brute.txt", std::ios::app};
+    std::ofstream outf{"/home/rohitfeb641/vector-db/benchmarks/benchmark_brute.txt", std::ios::app};
 
     auto calc_qps{[&](const VectorStore& vdb) {
         t.reset();

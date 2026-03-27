@@ -84,11 +84,11 @@ TEST_F(VectorStore_test, save_load_trip) {
     auto sz = vdb.size();
     ASSERT_TRUE(sz.is_ok());
 
-    auto res_save{vdb.save("/home/sp27022003/vector-db/db/brute_search/save_load_trip.bin")};
+    auto res_save{vdb.save("/home/rohitfeb641/vector-db/db/brute_search/save_load_trip.bin")};
     ASSERT_TRUE(res_save.is_ok()) << res_save.err_value();
     vdb = VectorStore{};
     
-    auto res_load{vdb.load("/home/sp27022003/vector-db/db/brute_search/save_load_trip.bin")};
+    auto res_load{vdb.load("/home/rohitfeb641/vector-db/db/brute_search/save_load_trip.bin")};
     ASSERT_TRUE(res_load.is_ok());
 
     auto query_res{vdb.query(a)};

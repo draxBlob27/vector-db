@@ -9,10 +9,10 @@ class VectorStore_test : public ::testing::Test {
 protected: 
     inline static VectorStore glove;
     inline static VectorStore sift;
-    inline static const std::string glove_filename{"/home/sp27022003/vector-db/GLoVE/glove_100d_2024.txt"};
-    inline static const std::string sift_data{"/home/sp27022003/vector-db/sift10K/sift_base.fvecs"};
-    inline static const std::string sift_query{"/home/sp27022003/vector-db/sift10K/sift_query.fvecs"};
-    inline static const std::string sift_truth{"/home/sp27022003/vector-db/sift10K/sift_groundtruth.ivecs"};
+    inline static const std::string glove_filename{"/home/rohitfeb641/vector-db/GLoVE/glove_100d_2024.txt"};
+    inline static const std::string sift_data{"/home/rohitfeb641/vector-db/sift10K/sift_base.fvecs"};
+    inline static const std::string sift_query{"/home/rohitfeb641/vector-db/sift10K/sift_query.fvecs"};
+    inline static const std::string sift_truth{"/home/rohitfeb641/vector-db/sift10K/sift_groundtruth.ivecs"};
     inline static GloveRes glove_res;
     inline static SiftRes sift_res;
 

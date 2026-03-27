@@ -16,7 +16,7 @@ int main() {
             // LSHIndex lsh_10K(10, 12);
             Timer t{};
 
-            std::string dir = "/home/sp27022003/vector-db/sift1M/";
+            std::string dir = "/home/rohitfeb641/vector-db/sift1M/";
         
             auto sift_res = Importer::import_sift1m(dir + "sift_base.fvecs", dir + "sift_query.fvecs", dir + "sift_groundtruth.ivecs");
         
@@ -30,7 +30,7 @@ int main() {
         
             // lsh_10k.build(std::vector<std::pair<std::uint64_t, Vector>>(data.begin(), data.begin() + 10000));
             // lsh_100k.build(std::vector<std::pair<std::uint64_t, Vector>>(data.begin(), data.begin() + 100000));
-            std::ofstream outf{"/home/sp27022003/vector-db/benchmarks/benchmark_lsh.txt", std::ios::app};
+            std::ofstream outf{"/home/rohitfeb641/vector-db/benchmarks/benchmark_lsh.txt", std::ios::app};
 
             t.reset();
             lsh_1M.build(std::move(data));
