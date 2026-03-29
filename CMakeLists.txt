@@ -1,13 +1,14 @@
 cmake_minimum_required(VERSION 3.10)
 project(vectorDB)
 
+find_package(TBB REQUIRED)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # set(CMAKE_CXX_STANDARD_EXTENSTIONS OFF)
 
-add_compile_options(-O3 -std=c++20 -pthread -Wall -pedantic -fno-omit-frame-pointer
-# -fno-exception -fno-rtti
-)
+add_compile_options(-std=c++20)
+# # -fno-exception -fno-rtti
 
 add_library(Archive_lib)
 target_sources(Archive_lib
@@ -68,6 +69,21 @@ target_sources(NSW_Index
         FILES
             "include/vectorDB/NSW_Index.hpp"
 )
+
+add_library(VectorStore_parallel)
+target_sources(VectorStore_parallel
+    PRIVATE
+        "src/ThreadSafeVectorStore.cpp"
+
+    PUBLIC
+        FILE_SET HEADERS
+        BASE_DIRS
+            "include"
+
+        FILES
+            "include/vectorDB/ThreadSafeVectorStore.hpp"
+)
+target_link_libraries(VectorStore_parallel PUBLIC TBB::tbb)
 
 add_subdirectory(benchmarks)
 add_subdirectory(tests)
