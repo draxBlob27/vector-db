@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <ios>
 #include <string>
-#include <stdexcept>
 #include <algorithm>
 #include <unordered_set>
 #include <functional>
@@ -15,8 +14,8 @@
 #include <atomic>
 #include <execution>
 #include <unordered_map>
-#include <variant>
 #include <vector>
+#include <condition_variable>
 #include "utils/Vector.hpp"
 #include "utils/Metric.hpp"
 #include "utils/Result.hpp"
@@ -60,6 +59,7 @@ private:
     static const inline std::uint32_t s_version{1};
     mutable std::atomic<int> global_tcnt{0};
     mutable std::shared_mutex entry_mutex;
+    mutable std::condition_variable_any data_cond;
 
     std::uint64_t int_size() const {
         return m_vectors.size();
@@ -78,6 +78,8 @@ public:
 
     //can definitely have overloads for const lvalue ref, or a rvalue.
     //So we have segregation of tasks, one for owning and one for reading.
+    Result<std::vector<std::pair<std::uint64_t, float>>, DBError> query_parallel (Vector q_vector, std::uint64_t k = 10, Metric metric = Metric::L2) const;
+
     Result<std::vector<std::pair<std::uint64_t, float>>, DBError> query (Vector q_vector, std::uint64_t k = 10, Metric metric = Metric::L2) const;
 
     Result<Unit, DBError> save(const std::string& filename) const;
