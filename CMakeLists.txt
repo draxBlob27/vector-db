@@ -39,6 +39,7 @@ target_sources(VectorStore_lib
         FILES
             "include/vectorDB/VectorStore.hpp"
 )
+target_link_libraries(VectorStore_lib PUBLIC TBB::tbb)
 
 add_library(LSH_Index)
 target_sources(LSH_Index
@@ -70,8 +71,8 @@ target_sources(NSW_Index
             "include/vectorDB/NSW_Index.hpp"
 )
 
-add_library(VectorStore_parallel)
-target_sources(VectorStore_parallel
+add_library(VectorStore_threadsafe)
+target_sources(VectorStore_threadsafe
     PRIVATE
         "src/ThreadSafeVectorStore.cpp"
 
@@ -83,7 +84,7 @@ target_sources(VectorStore_parallel
         FILES
             "include/vectorDB/ThreadSafeVectorStore.hpp"
 )
-target_link_libraries(VectorStore_parallel PUBLIC TBB::tbb)
+target_link_libraries(VectorStore_threadsafe PUBLIC TBB::tbb)
 
 add_subdirectory(benchmarks)
 add_subdirectory(tests)

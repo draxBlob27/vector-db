@@ -86,7 +86,6 @@ TEST_F(VectorStore_test, save_load_trip) {
 
     auto res_save{vdb.save("/home/rohitfeb641/vector-db/db/brute_search/save_load_trip.bin")};
     ASSERT_TRUE(res_save.is_ok()) << res_save.err_value();
-    vdb = VectorStore{};
     
     auto res_load{vdb.load("/home/rohitfeb641/vector-db/db/brute_search/save_load_trip.bin")};
     ASSERT_TRUE(res_load.is_ok());

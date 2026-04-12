@@ -12,9 +12,23 @@
 #include <unordered_map>
 #include <variant>
 #include <vector>
+#include <atomic>
+#include <execution>
+#include <condition_variable>
+#include <thread>
 #include "utils/Vector.hpp"
 #include "utils/Metric.hpp"
 #include "utils/Result.hpp"
+
+/*
+    |-------------------------------------------------------------------------------------------------------|
+    |   Because the system is bound to be, insert and query, majority of times.                             |
+    |   I didnt focused expilictly on making use of hash based data structures for storing incoming vectors,|
+    |   which would have made removal, extraction in O(1). But that is not the primary aim of this part.    |
+    |   Primary aim is to do O(n) query search.                                                             |
+    |   My target is to measure QPS metrics, rather than removal and finding a single vector.                |
+    |-------------------------------------------------------------------------------------------------------|
+*/
 
 //TODO -> code is still redundant, can use lamdas to fix, Will se later on.
 //TODO -> apply buffer in writing, using struct types to handle {id, vector of float}, could also use byte buffer which cares only take bytes into acounnt.
@@ -44,6 +58,7 @@ private:
     std::unordered_set<std::uint64_t> m_id_set;
     static const inline std::uint32_t s_magic_bytes{0x56454344};
     static const inline std::uint32_t s_version{1};
+    mutable std::atomic<int> global_tcnt{0};
 
 public:
     Result<Unit, DBError> insert(std::uint64_t id, Vector i_vector);
@@ -52,7 +67,9 @@ public:
 
     Result<std::vector<float>, DBError> get(std::uint64_t id) const;
 
-    Result<std::vector<std::pair<std::uint64_t, float>>, DBError> query (const Vector& q_vector, std::uint64_t k = 10, Metric metric = Metric::L2) const ;
+    Result<std::vector<std::pair<std::uint64_t, float>>, DBError> query (const Vector& q_vector, std::uint64_t k = 10, Metric metric = Metric::L2) const;
+
+    Result<std::vector<std::pair<std::uint64_t, float>>, DBError> query_parallel(Vector q_vector, std::uint64_t k, Metric metric) const;
 
     Result<Unit, DBError> save(const std::string& filename) const;
 
@@ -84,6 +101,10 @@ public:
         }
 
         return Ok{static_cast<std::uint64_t>(m_vectors[0].second.data.size())};
+    }
+
+    void get_global_ctr() const {
+        std::cout << global_tcnt << '\n';
     }
 };
 #endif //VECTORDB_HPP

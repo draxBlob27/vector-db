@@ -29,7 +29,7 @@ int main() {
     const std::vector<std::uint32_t>& truth_k{sift_res.truth_k};
 
     std::size_t num_queries = 100;
-    std::ofstream outf{"/home/rohitfeb641/vector-db/benchmarks/benchmark_brute_parallel.txt", std::ios::app};
+    std::ofstream outf{"/home/rohitfeb641/vector-db/benchmarks/benchmark_brute_threadsafe.txt", std::ios::app};
 
     auto calc_qps{[&](const ThreadSafeVectorStore& vdb) {
         t.reset();
@@ -70,7 +70,6 @@ int main() {
     }};
 
     calc_qps(vdb);
-    vdb.get_global_ctr();
     // calc_qps(vdb_100K);
     // calc_qps(vdb_1M);
 }

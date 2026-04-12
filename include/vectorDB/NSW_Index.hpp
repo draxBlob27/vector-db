@@ -4,6 +4,7 @@
 #include <vector>
 #include <queue>
 #include <limits>
+// #include <latch>
 #include <algorithm>
 #include <unordered_set>
 #include <string>
@@ -22,13 +23,13 @@ private:
     static const inline std::uint32_t s_version{1};
     static inline std::uint32_t indexNumber{0};
 
-    std::vector<Node> m_nodes;
-    std::uint64_t m_num_nodes = 0;
-    std::uint32_t m_dimension = 0;
-    std::uint64_t m_entry_point;
+    std::vector<Node> m_nodes{1000000};
+    std::atomic<std::uint64_t> m_num_reserved{0};  // slots claimed
+    std::atomic<std::uint64_t> m_num_nodes{0};     // fully constructed & visible
+    std::uint32_t m_dimension{0};
+    std::atomic<std::uint64_t> m_entry_point;
     std::uint32_t m_M, m_efConstruction, m_efSearch;
-
-    std::vector<std::pair<std::uint64_t, float>> search_layer(const Vector& v, std::uint32_t ef = 0, std::uint32_t M = 0) const;
+    // std::latch graph_ready{1};
 
 public:
     NSW_Index(std::uint32_t M, std::uint32_t efConstruction = 120, std::uint32_t efSearch = 50);
@@ -43,7 +44,11 @@ public:
             3.) Connect best k of these ef vectors to the incoming vector.
             4.) During this process if it happens to incerase the nodes connected of just now connected nodes, then find best of those, and prune remaining.
     */
+    void link_node(std::uint64_t id, const Vector& v, const std::vector<std::pair<std::uint64_t, float>>& best);
+
     void insert(std::uint64_t id, const Vector& v);
+    
+    std::vector<std::pair<std::uint64_t, float>> find_neighbors(const Vector& v, std::uint32_t ef = 0, std::uint32_t M = 0) const;
 
     std::vector<std::pair<std::uint64_t, float>> query(const Vector& v, std::uint32_t k, std::uint32_t efSearch = 0) const;
 

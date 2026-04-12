@@ -70,6 +70,7 @@ Result<Unit, DBError> VectorStore::remove(std::uint64_t id) {
     }
 
     m_vectors.erase(new_logical_end, m_vectors.end());
+    m_id_set.erase(id);
     return Ok<Unit>(Unit{});
 }   
 
@@ -197,6 +198,185 @@ Result<std::vector<std::pair<std::uint64_t, float>>, DBError> VectorStore::query
     default:
         return Err<DBError>{DBError::MetricError};
     }
+
+    return Ok(res);
+}
+
+Result<std::vector<std::pair<std::uint64_t, float>>, DBError> VectorStore::query_parallel(Vector q_vector, std::uint64_t k, Metric metric) const {//very large object is getting created, can think of move semantics
+
+    if (m_vectors.empty()) {
+        return Err<DBError>{DBError::DataBaseEmptyError};
+    }
+
+    if (m_vectors[0].second.size() != q_vector.size()) {//check for dimension mismatch with
+        return Err<DBError>{DBError::DimensionError};
+    }
+
+    std::size_t threads{std::thread::hardware_concurrency()};
+    std::size_t chunks = m_vectors.size() / threads;
+
+    std::vector<std::pair<std::uint64_t, float>> res; //handles if DB size is less than k.
+    std::vector<std::priority_queue<std::pair<float, std::uint64_t>, std::vector<std::pair<float, std::uint64_t>>, std::greater<>>> mn_pqs(threads);
+    std::vector<std::priority_queue<std::pair<float, std::uint64_t>>> mx_pqs(threads);//max heap, becuase closer is better, and we keep the farthest best .ie. kth closest vector.
+    q_vector.compute_norm();
+    // if query norm is 0 then outright riject it.
+    if (q_vector.norm() == 0.0f) {
+        return Err<DBError>{DBError::ZeroNormError};
+    }
+
+    auto l2_lambda = [&](const auto& item, std::size_t tid = -1) {
+        /* code */
+        //it.first -> id
+        //it.second -> Vector
+        std::size_t cmp = -1;
+        if (tid == cmp) {
+            thread_local int tbb_tid = global_tcnt.fetch_add(1);
+            tid = tbb_tid;
+        }
+        float distance{calc_distance<Metric::L2>(item.second, q_vector)};
+
+        if (mx_pqs[tid].size() < k) { //smaller is better
+            mx_pqs[tid].push({distance, item.first}); //holds the id
+        } else if (mx_pqs[tid].top().first > distance) {
+            mx_pqs[tid].pop();
+            mx_pqs[tid].push({distance, item.first});
+        }
+    };
+
+    auto cosine_lambda = [&](const auto& item, std::size_t tid = -1) {
+        if (item.second.norm() == 0.0f) {
+            return;
+        }
+
+        thread_local int tbb_tid = global_tcnt.fetch_add(1);
+        std::size_t cmp = -1;
+        if (tid == cmp) {
+            tid = tbb_tid;
+        }
+        
+        float distance{calc_distance<Metric::Cosine>(item.second, q_vector)};
+
+        if (mn_pqs[tid].size() < k) {
+            mn_pqs[tid].push({distance, item.first}); //holds the id
+        } else if (mn_pqs[tid].top().first < distance) {
+            mn_pqs[tid].pop();
+            mn_pqs[tid].push({distance, item.first});
+        }
+    };
+
+    auto dot_lambda = [&](const auto& item, std::size_t tid = -1) {
+        /* code */
+        //it.first -> id
+        //it.second -> Vector
+
+        thread_local int tbb_tid = global_tcnt.fetch_add(1);
+        std::size_t cmp = -1;
+        if (tid == cmp) {
+            tid = tbb_tid;
+        }
+
+        float distance{calc_distance<Metric::DotProduct>(item.second, q_vector)};
+        
+        if (mn_pqs[tid].size() < k) { //larger is better due to similarity -> vector more aligned
+            mn_pqs[tid].push({distance, item.first}); //holds the id
+        } else if (mn_pqs[tid].top().first < distance) {
+            mn_pqs[tid].pop();
+            mn_pqs[tid].push({distance, item.first});
+        }
+    };
+
+    auto run_parallel = [&](auto lambda) {
+        //MANNUAL PARTITIONING - QPS = 65+
+        std::vector<std::thread> workers;
+        std::size_t chunk = m_vectors.size() / threads;
+
+        for (std::size_t t{0}; t < threads; t++) {
+            std::size_t start = t * chunk;
+            std::size_t end = (t == threads-1) ? m_vectors.size() : start + chunk;
+
+            workers.emplace_back([&, t, start, end]() {
+                for (std::size_t i{start}; i < end; i++)
+                    lambda(m_vectors[i], t);  // no atomic, no contention
+            });
+        }
+
+        //ATOMIC COUNTER APPROACH - QPS = 19
+        // std::atomic<std::size_t> ctr{0};
+        // std::vector<std::thread> workers;
+
+        // auto worker = [&](std::size_t tid) {
+        //     for (std::size_t n{ctr++}; n < m_vectors.size(); n = ctr++) {
+        //         lambda(m_vectors.at(n), tid);
+        //     }
+        // };
+
+        // for (std::size_t n{0}; n < threads; n++) {
+        //     workers.emplace_back(worker, n);
+        // }
+
+
+        //UNCOMMENT FOR ABOVE METHODS
+        for(auto& w : workers)
+            w.join();
+
+        //TBB CONCURRENCY APPROACH - QPS = 70+
+        //Gets race condition
+        // std::for_each(std::execution::par, m_vectors.cbegin(), m_vectors.cend(), lambda);
+    };
+
+    switch(metric) {
+        case(Metric::Cosine): {
+            run_parallel(cosine_lambda);
+            break;
+        }
+        case(Metric::L2): {
+            run_parallel(l2_lambda);
+            break;
+        }
+        case(Metric::DotProduct): {
+            run_parallel(dot_lambda);
+            break;
+        }
+    }
+    
+
+    std::priority_queue<std::pair<float, std::uint64_t>, std::vector<std::pair<float, std::uint64_t>>> mn_pq;
+    std::priority_queue<std::pair<float, std::uint64_t>> mx_pq;
+
+    for (auto& pq : mx_pqs) {
+        //for n threads, we got n pqs, each with k nearest vectors locally.
+        //now we will merge them to best k globally.
+        
+        while (!pq.empty()) {
+            mx_pq.push(pq.top());
+            pq.pop();
+            if (mx_pq.size() > k) {
+                mx_pq.pop();
+            }
+        }
+    }
+
+    for (auto& pq : mn_pqs) {
+        while (!pq.empty()) {
+            mn_pq.push(pq.top());
+            pq.pop();
+            if (mn_pq.size() > k) {
+                mn_pq.pop();
+            }
+        }
+    }
+
+    while (!mx_pq.empty()) {
+        res.push_back({mx_pq.top().second, mx_pq.top().first});
+        mx_pq.pop();
+    }
+
+    while (!mn_pq.empty()) {
+        res.push_back({mn_pq.top().second, mn_pq.top().first});
+        mn_pq.pop();
+    }
+
+    std::ranges::reverse(res);
 
     return Ok(res);
 }
