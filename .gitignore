@@ -15,4 +15,5 @@ build*
 db*
 perf*
 flags
+*.cc
 

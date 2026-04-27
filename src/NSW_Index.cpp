@@ -28,9 +28,6 @@ std::vector<std::pair<std::uint64_t, float>> NSW_Index::search_layer(const Vecto
             }
 
             for (const auto& [__, nei] : m_nodes[nodeId].neighbors) {
-                // auto [_, inserted] = vis.insert(nei);
-
-                // if (!inserted) {
                 if (vis[nei]) {
                     continue;
                 }
