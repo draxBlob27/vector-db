@@ -2,7 +2,8 @@
 
 std::vector<std::pair<std::uint64_t, float>> NSW_Index::search_layer(const Vector& v, std::uint32_t ef, std::uint32_t M) const {
         if (ef == 0 && M == 0) {
-            return NSW_Index::search_layer(v, m_efConstruction, m_M);
+            ef =  m_efConstruction; 
+            M = m_M;
         }
         //To keep candidtate vectors in heap, we should take min heap, so then closest is at top.
         std::priority_queue<std::pair<float, std::uint64_t>, std::vector<std::pair<float, std::uint64_t>>, std::greater<>> candidates; //{score, id}
@@ -111,7 +112,7 @@ void NSW_Index::insert(std::uint64_t id, const Vector& v) {
 
 std::vector<std::pair<std::uint64_t, float>> NSW_Index::query(const Vector& v, std::uint32_t k, std::uint32_t efSearch) const {
     if (!efSearch) {
-        return query(v, k, m_efSearch);
+        efSearch = m_efSearch;
     }
 
     std::vector<std::pair<std::uint64_t, float>> best{search_layer(v, efSearch, k)};

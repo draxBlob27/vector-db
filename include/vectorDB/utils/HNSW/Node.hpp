@@ -3,7 +3,7 @@
 #include <vector>
 #include <set>
 #include <algorithm>
-#include "Vector.hpp"
+#include "vectorDB/utils/Vector.hpp"
 
 struct Node {
     std::uint64_t id;
@@ -11,9 +11,11 @@ struct Node {
     int layer;
     std::vector<std::vector<std::pair<float, std::uint64_t>>> neighbors;
 
-    Node(const std::uint64_t& id, const Vector& v)
-        :id{id}, vector{v}
-    {}
+    Node(const std::uint64_t id, const Vector& v, int l)
+        :id{id}, vector{v}, layer{l}
+    {
+        neighbors.resize(l + 1);
+    }
 
     Node() = default;
 
