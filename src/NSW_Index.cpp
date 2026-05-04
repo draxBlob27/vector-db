@@ -12,11 +12,8 @@ std::vector<std::pair<std::uint64_t, float>> NSW_Index::search_layer(const Vecto
         //contains efclose vectors, with top as farthest of close vector till now
         std::priority_queue<std::pair<float, std::uint64_t>> found_closest;
 
-        // std::unordered_set<std::uint64_t> vis;
-        std::vector<int> vis(NSW_Index::m_num_nodes);
-
         // vis.insert(m_entry_point);
-        vis[m_entry_point] = 1;
+        m_visited[m_entry_point] = m_generation_counter;
         candidates.push({calc_distance<Metric::L2>(m_nodes[m_entry_point].vector, v), m_entry_point});
         found_closest.push({calc_distance<Metric::L2>(m_nodes[m_entry_point].vector, v), m_entry_point});
 
@@ -29,11 +26,11 @@ std::vector<std::pair<std::uint64_t, float>> NSW_Index::search_layer(const Vecto
             }
 
             for (const auto& [__, nei] : m_nodes[nodeId].neighbors) {
-                if (vis[nei]) {
+                if (m_visited[nei] == m_generation_counter) {
                     continue;
                 }
 
-                vis[nei] = 1;
+                m_visited[nei] = m_generation_counter;
 
                 float dist{calc_distance<Metric::L2>(m_nodes[nei].vector, v)};
                 if (found_closest.top().first > dist || static_cast<uint32_t>(found_closest.size()) < ef) {
@@ -72,6 +69,10 @@ NSW_Index::NSW_Index(std::uint32_t M, std::uint32_t efConstruction, std::uint32_
 
 void NSW_Index::insert(std::uint64_t id, const Vector& v) {
     // If this vector is first then assign it as entry point for incoming vectors.
+    if (m_visited.size() < m_nodes.size() + 1) {
+            m_visited.resize(m_nodes.size() + 5000);
+    }
+
     m_nodes.push_back({id, v});
     m_num_nodes++;
     
@@ -111,6 +112,7 @@ void NSW_Index::insert(std::uint64_t id, const Vector& v) {
     }
 
     inc.align(m_M);
+    m_generation_counter++;
 }
 
 std::vector<std::pair<std::uint64_t, float>> NSW_Index::query(const Vector& v, std::uint32_t k, std::uint32_t efSearch) const {

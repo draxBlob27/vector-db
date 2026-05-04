@@ -21,6 +21,9 @@ private:
     std::uint32_t m_efSearch; //search width during query
     double m_ml; //normalization factor for level generation mL
 
+    mutable std::vector<std::uint32_t> m_visited;
+    mutable std::uint32_t m_generation_counter = 1;
+
     int select_layer() {
         std::uniform_real_distribution<double> dist(0.0, 1.0);
         std::random_device gen;
@@ -37,6 +40,10 @@ public:
     }
 
     void insert(std::uint64_t id, const Vector& v) {
+        if (m_visited.size() < m_nodes.size() + 1) {
+            m_visited.resize(m_nodes.size() + 5000);
+        }
+
         int l = select_layer();
         Node new_node = Node(id, v, l);
         if (m_nodes.empty()) {
@@ -74,6 +81,7 @@ public:
                     continue;
 
                 auto& econn{m_nodes[nei_id].neighbors[lc]};
+                std::ranges::sort(econn);
     
                 if (econn.size() > static_cast<std::size_t>(M_use)) {
                     auto new_conn{select_neighbors(m_nodes[nei_id].data(), econn, M_use, lc)};
@@ -91,7 +99,6 @@ public:
     }
 
     std::vector<std::pair<float, std::uint64_t>> search_layer(const Vector& query, const std::vector<std::pair<float, std::uint64_t>>& entry_points, std::uint32_t ef, int lc) const {
-        std::unordered_set<std::uint64_t> vis; //set of visited elements 
         std::priority_queue<std::pair<float, std::uint64_t>, std::vector<std::pair<float, std::uint64_t>>, std::greater<>> candidates; //set of candidates
         std::priority_queue<std::pair<float, std::uint64_t>> result; // dynamic list of found nearest neighbors
 
@@ -99,7 +106,7 @@ public:
             float dist = calc_distance<Metric::L2>(m_nodes[ep].data(), query);
             candidates.emplace(dist, ep);
             result.emplace(dist, ep);
-            vis.insert(ep);
+            m_visited[ep] = m_generation_counter;
         }
 
         while (!candidates.empty()) {
@@ -115,11 +122,12 @@ public:
             }
             
             for (auto [_, nei_id] : m_nodes[curr_idx].neighbors[lc]) {
-                auto [__, inserted] = vis.insert(nei_id);
-                if (!inserted) {
+                if (m_visited[nei_id] == m_generation_counter) {
                     continue;
                 }
-                
+
+                m_visited[nei_id] = m_generation_counter;
+            
                 auto dist = calc_distance<Metric::L2>(query, m_nodes[nei_id].data());
                 if (result.size() < ef || dist < result.top().first) {
                     candidates.emplace(dist, nei_id);
@@ -138,16 +146,20 @@ public:
         }
 
         std::ranges::reverse(output);
+        m_generation_counter++;
+        if (m_generation_counter == 0) { // Overflow occurred
+            std::fill(m_visited.begin(), m_visited.end(), 0);
+            m_generation_counter = 1;
+        }
         return output; //returns output of size ef sorted in order (closest -> farthest).
     }
 
     std::vector<std::pair<float, std::uint64_t>> select_neighbors(const Vector& query, const std::vector<std::pair<float, std::uint64_t>>& dist_cand, int M, int lc) {
         //dist_cand is sorted in order neares to farthest from query q.
-        std::vector<std::pair<float, std::uint64_t>> result;
-        std::priority_queue<std::pair<float, std::uint64_t>, std::vector<std::pair<float, std::uint64_t>>, std::greater<>> w_discarded;
+        std::vector<std::pair<float, std::uint64_t>> result, w_discarded;
 
         for (auto [dist, idx] : dist_cand) {
-            if (result.size() >= static_cast<std::size_t>(M)) {
+            if (result.size() >= static_cast<uint64_t>(M)) {
                 break;
             }
 
@@ -164,17 +176,16 @@ public:
             if (!is_discarded) {
                 result.push_back({dist, idx}); 
             } else {
-                w_discarded.push({dist, idx});
+                w_discarded.push_back({dist, idx});
             }
         }
 
-        while (w_discarded.size() && result.size() < static_cast<std::size_t>(M)) {
-            result.push_back(w_discarded.top());
+        std::size_t ind{0};
+        while (ind < w_discarded.size() && result.size() < static_cast<std::size_t>(M)) {
+            result.push_back(w_discarded[ind++]);
             //doing this might make result unsorted.
-            w_discarded.pop();
         }
 
-        //performs a sort to keep result sorted;
         std::ranges::sort(result);
         return result;
     }
