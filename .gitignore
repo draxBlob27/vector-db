@@ -17,3 +17,4 @@ perf*
 flags
 *.cc
 
+*.data*

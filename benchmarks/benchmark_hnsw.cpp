@@ -13,7 +13,7 @@ int main() {
     HNSW_Index hnsw_10K{M, efConstruction};
     Timer t{};
 
-    std::string dir = "/home/rohitfeb641/vector-db/sift10K/";
+    std::string dir = "/home/rohitfeb641/vector-db/sift1M/";
         
     auto sift_res = Importer::import_sift1m(dir + "sift_base.fvecs", dir + "sift_query.fvecs", dir + "sift_groundtruth.ivecs");
 

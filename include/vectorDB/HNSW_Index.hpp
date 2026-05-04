@@ -142,8 +142,9 @@ public:
     }
 
     std::vector<std::pair<float, std::uint64_t>> select_neighbors(const Vector& query, const std::vector<std::pair<float, std::uint64_t>>& dist_cand, int M, int lc) {
+        //dist_cand is sorted in order neares to farthest from query q.
         std::vector<std::pair<float, std::uint64_t>> result;
-        std::priority_queue<std::pair<float, std::uint64_t>> w_discarded;
+        std::priority_queue<std::pair<float, std::uint64_t>, std::vector<std::pair<float, std::uint64_t>>, std::greater<>> w_discarded;
 
         for (auto [dist, idx] : dist_cand) {
             if (result.size() >= static_cast<std::size_t>(M)) {
@@ -153,6 +154,8 @@ public:
             bool is_discarded = false;
             for (auto [_, r_idx] : result) {
                 if (calc_distance<Metric::L2>(m_nodes[r_idx].data(), m_nodes[idx].data()) < dist) {
+                    //cand is rejected if it breaks heuristic i.e if dist(r, e) < dist(q, e)
+                    //meaning new neighbor is not shadowed by existing nodes.
                     is_discarded = true;
                     break;
                 }
@@ -167,9 +170,12 @@ public:
 
         while (w_discarded.size() && result.size() < static_cast<std::size_t>(M)) {
             result.push_back(w_discarded.top());
+            //doing this might make result unsorted.
             w_discarded.pop();
         }
 
+        //performs a sort to keep result sorted;
+        std::ranges::sort(result);
         return result;
     }
 

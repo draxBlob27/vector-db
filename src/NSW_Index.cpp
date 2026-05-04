@@ -87,12 +87,15 @@ void NSW_Index::insert(std::uint64_t id, const Vector& v) {
     std::vector<std::pair<std::uint64_t, float>> best{search_layer(v)}; //no issue of copoying, becase of mandatory copy elision in RVO
 
     for (const auto& [closest_id, closest_dist] : best) {
-        float min_dist{std::numeric_limits<float>::max()};
+        bool is_discarded = false;
         for (const auto& [_, nei_id]: inc.neighbors) {
-            min_dist = std::min(min_dist, calc_distance<Metric::L2>(m_nodes[nei_id].vector, m_nodes[closest_id].vector));
+            if (calc_distance<Metric::L2>(m_nodes[nei_id].vector, m_nodes[closest_id].vector) < closest_dist) {
+                is_discarded = true;
+                break;
+            }
         }
 
-        if (closest_dist < min_dist) {
+        if (!is_discarded) {
             inc.neighbors.push_back({closest_dist, closest_id}); //inesrt {score, id} of closest nei -- creating graph edges
     
             m_nodes[closest_id].neighbors.push_back({closest_dist, inc_id});
