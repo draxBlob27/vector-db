@@ -15,7 +15,7 @@ int main() {
 
     std::string dir = "/home/rohitfeb641/vector-db/sift1M/";
         
-    auto sift_res = Importer::import_sift1m(dir + "sift_base.fvecs", dir + "sift_query.fvecs", dir + "sift_groundtruth.ivecs");
+    auto sift_res = Importer::import_sift1m(dir + "sift_base.fvecs", dir + "sift_query.fvecs", dir + "sift_groundtruth.ivecs", 100000);
 
     const std::vector<std::uint64_t>& ids{sift_res.ok_value().ids};
     const std::vector<Vector>& vectors{sift_res.ok_value().vectors};
@@ -40,41 +40,41 @@ int main() {
 
     outf.flush();
 
-    for (const auto& efSearch: efSearches) {
-        outf << "efSearch = " << efSearch << "\n";
-        const std::vector<std::vector<float>>& queries{sift_res.ok_value().queries};
-        const std::vector<std::vector<std::uint32_t>>& truths{sift_res.ok_value().truths};
-        const std::vector<std::uint32_t>& truth_k{sift_res.ok_value().truth_k};
+    // for (const auto& efSearch: efSearches) {
+    //     outf << "efSearch = " << efSearch << "\n";
+    //     const std::vector<std::vector<float>>& queries{sift_res.ok_value().queries};
+    //     const std::vector<std::vector<std::uint32_t>>& truths{sift_res.ok_value().truths};
+    //     const std::vector<std::uint32_t>& truth_k{sift_res.ok_value().truth_k};
     
-        std::size_t num_queries = 100;
-        auto calc_qps{[&](const HNSW_Index& hnsw) {
-            int intersection{0};
-            std::uint32_t my_k{10};
-            double dur = 0;
-            for (std::size_t i{0}; i < num_queries; i++) {
-                t.reset();
-                auto res = hnsw.query(queries[i], my_k, efSearch); //impilcit conversion fo float query to Vector query
-                dur += t.elapsed();
-                for (std::uint32_t j = 0; j < my_k; j++) {
-                    for (std::uint32_t k = 0; k < my_k; k++) {
-                        if (res[j].first == truths[i][k]) {
-                            intersection++;
-                            break;
-                        }
-                    }
-                }
-            }
+    //     std::size_t num_queries = 100;
+    //     auto calc_qps{[&](const HNSW_Index& hnsw) {
+    //         int intersection{0};
+    //         std::uint32_t my_k{10};
+    //         double dur = 0;
+    //         for (std::size_t i{0}; i < num_queries; i++) {
+    //             t.reset();
+    //             auto res = hnsw.query(queries[i], my_k, efSearch); //impilcit conversion fo float query to Vector query
+    //             dur += t.elapsed();
+    //             for (std::uint32_t j = 0; j < my_k; j++) {
+    //                 for (std::uint32_t k = 0; k < my_k; k++) {
+    //                     if (res[j].first == truths[i][k]) {
+    //                         intersection++;
+    //                         break;
+    //                     }
+    //                 }
+    //             }
+    //         }
     
-            dur = dur / num_queries;
-            outf << "MsPQ for " << hnsw.getSize() << " vectors : " << dur << " Milliseconds\n";
-            outf << "Recall@10 for " << hnsw.getSize() << " vectors : " << intersection * 100 / (num_queries * my_k) << "%\n";
+    //         dur = dur / num_queries;
+    //         outf << "MsPQ for " << hnsw.getSize() << " vectors : " << dur << " Milliseconds\n";
+    //         outf << "Recall@10 for " << hnsw.getSize() << " vectors : " << intersection * 100 / (num_queries * my_k) << "%\n";
     
-            outf << "QPS for " << hnsw.getSize() << " vectors : " << static_cast<int>(1000 / dur) << " queries\n";
+    //         outf << "QPS for " << hnsw.getSize() << " vectors : " << static_cast<int>(1000 / dur) << " queries\n";
     
-            outf.flush();
-        }};
+    //         outf.flush();
+    //     }};
     
-        calc_qps(hnsw_10K);
-    }
+    //     calc_qps(hnsw_10K);
+    // }
     outf << '\n';
 }
