@@ -4,6 +4,25 @@ A vector database built from scratch in C++20, implementing four search strategi
 
 ---
 
+# Benchmark Comparison (1 Million Vectors)
+| Implementation | QPS (1M Vectors) | Recall@10 | Build Time | Major Bottleneck | Improvement |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **1. Brute Force** | 6 QPS | 100% | 0.00 secs | $O(N)$ complexity; computing 1 million exact L2 distances per query saturates the CPU. | **Baseline:** Perfect accuracy, but completely unscalable. |
+| **2. LSH** | ~29 QPS | 85% | ~6.38 secs | Curse of dimensionality; high-dimensional grid partitioning leads to massive collision overhead. | **Sub-linear Search:** Replaced exhaustive $O(N)$ loops with Locality-Sensitive Hashing and bitwise projection. |
+| **3. NSW** | 3,130 QPS | 94% | 266.99 secs | Polylogarithmic scaling; greedy routing suffers from a long "zoom-out" phase and can get stuck in local minima. | **Graph Routing:** Replaced hash buckets with a Navigable Small World graph, unlocking massive speed multipliers. |
+| **4. HNSW** | 5,794 QPS | >95% | 760.18 secs | Pointer chasing; `std::vector` heap allocations fragment memory, destroying L1 cache hit rates during traversals. | **Logarithmic Search & SIMD:** Added hierarchy layers. Used `-Ofast` to unlock AVX2 SIMD, boosting query throughput heavily. |
+| **5. nmslib (Official)** | ~10,000 QPS | ~95% | Highly Opt. | Physical RAM bandwidth limits (waiting for memory to physically travel to the CPU). | **Arena Allocation:** Used C-style flat, contiguous memory arrays to perfectly feed the CPU's Hardware Prefetcher. |
+| **6. Annoy (Spotify)** | ~1,000 QPS | ~95% | Variable | Unpredictable memory branching during Random Projection Tree traversals. | *(Historical Standard)*: Used heavily before graph algorithms took over the industry. |
+| **7. Faiss (Facebook)** | ~11,000 QPS | ~95% | Highly Opt. | Physical RAM bandwidth limits. | **Production Scale:** Best-in-class memory alignment, multi-threading, and hardware-specific SIMD instruction unrolling. |
+
+---
+
+### Data Notes:
+*   *LSH Metrics:* Selected from `Table: 10, Proj: 12` as a representative balance of speed and recall.
+*   *NSW Metrics:* Selected at `efSearch = 100`.
+*   *HNSW Metrics:* Sourced from your optimized `-Ofast` / `efConst = 100` run at `efSearch = 50`.
+*   *nmslib / Faiss / Annoy:* Benchmarks drawn from the official HNSW paper and standardized industry tracking on the SIFT1M dataset.
+
 ## What It Does
 
 ### Data Storage — [How it works](#vectorstore-and-archive)
@@ -37,6 +56,10 @@ A `Result<Ok, Err>` type modeled after Rust's Result, using `std::variant` inter
 ### SafeVector — [How it works](#safevector)
 
 A custom `std::vector` replacement built as a learning exercise, implementing the Rule of Five, copy-and-swap idiom, strong exception safety in `push_back`, and bounds-checked access.
+
+### Thread-Safe VectorStore — [How it works](#concurrency-and-thread-safe-vectorstore)
+ 
+A wrapper around `VectorStore` that adds a `shared_mutex` for concurrent access: multiple threads can query simultaneously, while insert/remove/save/load take exclusive ownership. Includes a `condition_variable` that blocks queries until the database reaches a minimum size.
 
 ---
 
@@ -192,3 +215,25 @@ The move constructor takes ownership of the source's heap allocation and resets 
 The copy-and-swap assignment operator takes its argument by value (triggering either a copy or move construction depending on the call site), then swaps with `*this`. This handles self-assignment correctly, provides strong exception safety (the copy happens before any modification to `*this`), and collapses copy and move assignment into one function.
 
 `push_back` achieves strong exception safety by allocating new memory, moving all existing elements, and inserting the new value before committing the new buffer to `m_data`. If the assignment throws, `m_data` is unchanged.
+
+---
+ 
+### Concurrency and Thread-Safe VectorStore
+ 
+The first question when adding concurrency is where it actually helps. Several obvious candidates turn out to be wrong:
+ 
+- **Building the index**: inserting a vector is a critical section on shared state. Spawning threads only to serialize them at the same lock buys nothing.
+- **Norm computation at insertion**: the per-vector cost is small enough that thread spawn overhead would exceed the savings.
+- **Saving to disk**: writing a binary file is inherently sequential. Splitting it across threads creates coordination problems with no throughput benefit.
+- **Loading from disk**: threads would spend most of their time waiting on I/O, not computing. The bottleneck is the disk, not the CPU.
+This leaves **concurrent querying** as the meaningful target. Many read threads can safely scan the same immutable vector data simultaneously, as long as no write is happening.
+ 
+`ThreadSafeVectorStore` wraps `VectorStore` with a `std::shared_mutex`. Read operations (`query`, `get`, `size`, `dimensions`, `info`) acquire a shared lock, allowing any number of concurrent readers. Write operations (`insert`, `remove`, `save`, `load`) acquire a unique lock, blocking all readers and other writers until they complete.
+ 
+The `condition_variable_any` adds a wait condition to `query`: if the database has not yet reached a minimum population (used in scenarios where a background thread is loading data while query threads are already running), the query thread sleeps and releases the shared lock rather than spinning or returning an empty result. When an insert completes successfully, it calls `notify_all` to wake any waiting query threads.
+ 
+The main difficulty with concurrent code is that bugs are timing-dependent and often invisible under light load. A few hard lessons from this:
+ 
+- Using `std::shared_mutex` is not free. Lock acquisition and contention have overhead. If the critical section is very short (e.g. a single integer read), the locking cost can exceed the benefit. The right question is whether the protected work is large enough to justify the synchronization cost.
+- A `condition_variable` must always be used with a predicate. Spurious wakeups (where the thread wakes without being notified) are real and can cause a query to proceed on an empty database. The predicate re-checks the condition before proceeding.
+- The mental model for correctness: at any point in time, either one writer holds the mutex exclusively, or any number of readers hold it shared. These two states must never overlap. Getting this wrong produces data races that corrupt results silently rather than crashing.
