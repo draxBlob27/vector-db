@@ -58,7 +58,11 @@ std::vector<std::pair<std::uint64_t, float>> NSW_Index::search_layer(const Vecto
         }
 
         std::ranges::reverse(best);
-
+        m_generation_counter++;
+        if (m_generation_counter == 0) { // Overflow occurred
+            std::fill(m_visited.begin(), m_visited.end(), 0);
+            m_generation_counter = 1;
+        }
         return best;
     }
 
@@ -70,7 +74,7 @@ NSW_Index::NSW_Index(std::uint32_t M, std::uint32_t efConstruction, std::uint32_
 void NSW_Index::insert(std::uint64_t id, const Vector& v) {
     // If this vector is first then assign it as entry point for incoming vectors.
     if (m_visited.size() < m_nodes.size() + 1) {
-            m_visited.resize(m_nodes.size() + 5000);
+        m_visited.resize(m_nodes.size() + 5000);
     }
 
     m_nodes.push_back({id, v});
@@ -112,7 +116,6 @@ void NSW_Index::insert(std::uint64_t id, const Vector& v) {
     }
 
     inc.align(m_M);
-    m_generation_counter++;
 }
 
 std::vector<std::pair<std::uint64_t, float>> NSW_Index::query(const Vector& v, std::uint32_t k, std::uint32_t efSearch) const {

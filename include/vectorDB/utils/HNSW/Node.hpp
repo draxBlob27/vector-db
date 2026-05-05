@@ -9,7 +9,7 @@ struct Node {
     std::uint64_t id;
     Vector vector;
     int layer;
-    std::vector<std::vector<std::pair<float, std::uint64_t>>> neighbors;
+    std::vector<std::vector<std::uint64_t>> neighbors;
 
     Node(const std::uint64_t id, const Vector& v, int l)
         :id{id}, vector{v}, layer{l}

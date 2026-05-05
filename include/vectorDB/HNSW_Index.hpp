@@ -68,23 +68,28 @@ public:
             int M_use = lc == 0 ? m_Mmax0 : m_Mmax;
             auto neighbors{select_neighbors(v, candidates, M_use, lc)};
             
-            for (auto [dist, nei_id] : neighbors) {
+            for (auto nei_id : neighbors) {
                 if (lc > m_nodes[nei_id].layer) 
                     continue;
 
-                m_nodes[ind].neighbors[lc].push_back({dist, nei_id});
-                m_nodes[nei_id].neighbors[lc].push_back({dist, ind});
+                m_nodes[ind].neighbors[lc].push_back(nei_id);
+                m_nodes[nei_id].neighbors[lc].push_back(ind);
             }
             
-            for (auto [dist, nei_id] : neighbors) {
+            for (auto nei_id : neighbors) {
                 if (lc > m_nodes[nei_id].layer) 
                     continue;
 
                 auto& econn{m_nodes[nei_id].neighbors[lc]};
-                std::ranges::sort(econn);
+                std::vector<std::pair<float, uint64_t>> temp_econn;
+                for (auto id : econn) {
+                    temp_econn.push_back({calc_distance<Metric::L2>(m_nodes[id].data(), v), id});
+                }
+
+                std::ranges::sort(temp_econn);
     
                 if (econn.size() > static_cast<std::size_t>(M_use)) {
-                    auto new_conn{select_neighbors(m_nodes[nei_id].data(), econn, M_use, lc)};
+                    auto new_conn{select_neighbors(m_nodes[nei_id].data(), temp_econn, M_use, lc)};
                     econn = new_conn;
                 }
             }
@@ -121,7 +126,7 @@ public:
                 continue;
             }
             
-            for (auto [_, nei_id] : m_nodes[curr_idx].neighbors[lc]) {
+            for (auto nei_id : m_nodes[curr_idx].neighbors[lc]) {
                 if (m_visited[nei_id] == m_generation_counter) {
                     continue;
                 }
@@ -154,7 +159,7 @@ public:
         return output; //returns output of size ef sorted in order (closest -> farthest).
     }
 
-    std::vector<std::pair<float, std::uint64_t>> select_neighbors(const Vector& query, const std::vector<std::pair<float, std::uint64_t>>& dist_cand, int M, int lc) {
+    std::vector<std::uint64_t> select_neighbors(const Vector& query, const std::vector<std::pair<float, std::uint64_t>>& dist_cand, int M, int lc) {
         //dist_cand is sorted in order neares to farthest from query q.
         std::vector<std::pair<float, std::uint64_t>> result, w_discarded;
 
@@ -187,7 +192,11 @@ public:
         }
 
         std::ranges::sort(result);
-        return result;
+        std::vector<std::uint64_t> output;
+        for (auto [_, id] : result) {
+            output.push_back(id);
+        }
+        return output;
     }
 
     std::vector<std::pair<std::uint64_t, float>> query(const Vector& query, std::uint32_t k, std::uint32_t efSearch) const {
