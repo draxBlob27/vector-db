@@ -10,7 +10,7 @@ struct Node {
     Vector vector;
     std::vector<std::pair<float, std::uint64_t>> neighbors;
 
-    Node(const std::uint64_t& id, const Vector& v)
+    Node(const std::uint64_t id, const Vector& v)
         :id{id}, vector{v}
     {}
 

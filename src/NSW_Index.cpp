@@ -2,7 +2,8 @@
 
 std::vector<std::pair<std::uint64_t, float>> NSW_Index::search_layer(const Vector& v, std::uint32_t ef, std::uint32_t M) const {
         if (ef == 0 && M == 0) {
-            return NSW_Index::search_layer(v, m_efConstruction, m_M);
+            ef =  m_efConstruction; 
+            M = m_M;
         }
         //To keep candidtate vectors in heap, we should take min heap, so then closest is at top.
         std::priority_queue<std::pair<float, std::uint64_t>, std::vector<std::pair<float, std::uint64_t>>, std::greater<>> candidates; //{score, id}
@@ -11,11 +12,8 @@ std::vector<std::pair<std::uint64_t, float>> NSW_Index::search_layer(const Vecto
         //contains efclose vectors, with top as farthest of close vector till now
         std::priority_queue<std::pair<float, std::uint64_t>> found_closest;
 
-        // std::unordered_set<std::uint64_t> vis;
-        std::vector<int> vis(NSW_Index::m_num_nodes);
-
         // vis.insert(m_entry_point);
-        vis[m_entry_point] = 1;
+        m_visited[m_entry_point] = m_generation_counter;
         candidates.push({calc_distance<Metric::L2>(m_nodes[m_entry_point].vector, v), m_entry_point});
         found_closest.push({calc_distance<Metric::L2>(m_nodes[m_entry_point].vector, v), m_entry_point});
 
@@ -28,14 +26,11 @@ std::vector<std::pair<std::uint64_t, float>> NSW_Index::search_layer(const Vecto
             }
 
             for (const auto& [__, nei] : m_nodes[nodeId].neighbors) {
-                // auto [_, inserted] = vis.insert(nei);
-
-                // if (!inserted) {
-                if (vis[nei]) {
+                if (m_visited[nei] == m_generation_counter) {
                     continue;
                 }
 
-                vis[nei] = 1;
+                m_visited[nei] = m_generation_counter;
 
                 float dist{calc_distance<Metric::L2>(m_nodes[nei].vector, v)};
                 if (found_closest.top().first > dist || static_cast<uint32_t>(found_closest.size()) < ef) {
@@ -63,7 +58,7 @@ std::vector<std::pair<std::uint64_t, float>> NSW_Index::search_layer(const Vecto
         }
 
         std::ranges::reverse(best);
-
+        m_generation_counter++;
         return best;
     }
 
@@ -74,6 +69,10 @@ NSW_Index::NSW_Index(std::uint32_t M, std::uint32_t efConstruction, std::uint32_
 
 void NSW_Index::insert(std::uint64_t id, const Vector& v) {
     // If this vector is first then assign it as entry point for incoming vectors.
+    if (m_visited.size() < m_nodes.size() + 1) {
+            m_visited.resize(m_nodes.size() + 5000);
+    }
+
     m_nodes.push_back({id, v});
     m_num_nodes++;
     
@@ -89,12 +88,15 @@ void NSW_Index::insert(std::uint64_t id, const Vector& v) {
     std::vector<std::pair<std::uint64_t, float>> best{search_layer(v)}; //no issue of copoying, becase of mandatory copy elision in RVO
 
     for (const auto& [closest_id, closest_dist] : best) {
-        float min_dist{std::numeric_limits<float>::max()};
+        bool is_discarded = false;
         for (const auto& [_, nei_id]: inc.neighbors) {
-            min_dist = std::min(min_dist, calc_distance<Metric::L2>(m_nodes[nei_id].vector, m_nodes[closest_id].vector));
+            if (calc_distance<Metric::L2>(m_nodes[nei_id].vector, m_nodes[closest_id].vector) < closest_dist) {
+                is_discarded = true;
+                break;
+            }
         }
 
-        if (closest_dist < min_dist) {
+        if (!is_discarded) {
             inc.neighbors.push_back({closest_dist, closest_id}); //inesrt {score, id} of closest nei -- creating graph edges
     
             m_nodes[closest_id].neighbors.push_back({closest_dist, inc_id});
@@ -114,7 +116,7 @@ void NSW_Index::insert(std::uint64_t id, const Vector& v) {
 
 std::vector<std::pair<std::uint64_t, float>> NSW_Index::query(const Vector& v, std::uint32_t k, std::uint32_t efSearch) const {
     if (!efSearch) {
-        return query(v, k, m_efSearch);
+        efSearch = m_efSearch;
     }
 
     std::vector<std::pair<std::uint64_t, float>> best{search_layer(v, efSearch, k)};

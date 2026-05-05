@@ -15,3 +15,9 @@ target_link_libraries(benchmark_nsw
     PRIVATE
         NSW_Index
 )
+
+add_executable(benchmark_hnsw "benchmark_hnsw.cpp")
+target_include_directories(benchmark_hnsw
+    PUBLIC
+        ${PROJECT_SOURCE_DIR}/include
+)

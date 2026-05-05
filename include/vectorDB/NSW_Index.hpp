@@ -28,6 +28,9 @@ private:
     std::uint64_t m_entry_point;
     std::uint32_t m_M, m_efConstruction, m_efSearch;
 
+    mutable std::vector<std::uint32_t> m_visited;
+    mutable std::uint32_t m_generation_counter = 1;
+
     std::vector<std::pair<std::uint64_t, float>> search_layer(const Vector& v, std::uint32_t ef = 0, std::uint32_t M = 0) const;
 
 public:
