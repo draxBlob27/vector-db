@@ -58,7 +58,7 @@ std::vector<std::pair<std::uint64_t, float>> NSW_Index::search_layer(const Vecto
         }
 
         std::ranges::reverse(best);
-
+        m_generation_counter++;
         return best;
     }
 
@@ -112,7 +112,6 @@ void NSW_Index::insert(std::uint64_t id, const Vector& v) {
     }
 
     inc.align(m_M);
-    m_generation_counter++;
 }
 
 std::vector<std::pair<std::uint64_t, float>> NSW_Index::query(const Vector& v, std::uint32_t k, std::uint32_t efSearch) const {
