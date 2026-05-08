@@ -227,13 +227,4 @@ The first question when adding concurrency is where it actually helps. Several o
 - **Saving to disk**: writing a binary file is inherently sequential. Splitting it across threads creates coordination problems with no throughput benefit.
 - **Loading from disk**: threads would spend most of their time waiting on I/O, not computing. The bottleneck is the disk, not the CPU.
 This leaves **concurrent querying** as the meaningful target. Many read threads can safely scan the same immutable vector data simultaneously, as long as no write is happening.
- 
-`ThreadSafeVectorStore` wraps `VectorStore` with a `std::shared_mutex`. Read operations (`query`, `get`, `size`, `dimensions`, `info`) acquire a shared lock, allowing any number of concurrent readers. Write operations (`insert`, `remove`, `save`, `load`) acquire a unique lock, blocking all readers and other writers until they complete.
- 
-The `condition_variable_any` adds a wait condition to `query`: if the database has not yet reached a minimum population (used in scenarios where a background thread is loading data while query threads are already running), the query thread sleeps and releases the shared lock rather than spinning or returning an empty result. When an insert completes successfully, it calls `notify_all` to wake any waiting query threads.
- 
-The main difficulty with concurrent code is that bugs are timing-dependent and often invisible under light load. A few hard lessons from this:
- 
-- Using `std::shared_mutex` is not free. Lock acquisition and contention have overhead. If the critical section is very short (e.g. a single integer read), the locking cost can exceed the benefit. The right question is whether the protected work is large enough to justify the synchronization cost.
-- A `condition_variable` must always be used with a predicate. Spurious wakeups (where the thread wakes without being notified) are real and can cause a query to proceed on an empty database. The predicate re-checks the condition before proceeding.
 - The mental model for correctness: at any point in time, either one writer holds the mutex exclusively, or any number of readers hold it shared. These two states must never overlap. Getting this wrong produces data races that corrupt results silently rather than crashing.
